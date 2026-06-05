@@ -639,7 +639,7 @@ function renderPreviews() {
 }
 
 // ── PROMPTS ───────────────────────────────────────────
-var PROMPT_BOOKS = 'You are an expert used book buyer and reseller. Analyze the uploaded image(s) of books and identify every visible book.\nFor each item include a "location" field with the EXACT physical position in the image. Count shelves from the TOP (Shelf 1 = top shelf, Shelf 2 = second shelf, etc.). Then count books on that shelf from LEFT to RIGHT and give the position number (e.g. "Shelf 2, book 7 from left"). If you cannot determine an exact count use a range (e.g. "Shelf 3, approx 4th-5th from left"). This location is critical so the owner can physically walk to the shelf and find the exact book.\nOMIT any item where the expected resale market price is under $5 — only include books worth listing.\nFor each book provide three price points: market_price (what a patient private seller gets), quick_price (priced to sell within days), and dealer_price (what a used book dealer or buyback service would pay wholesale — typically 10-30% of market value).\nCRITICAL: Respond with ONE valid JSON object only. No markdown. No code fences. No text before or after. Start with { end with }. Double quotes only. No trailing commas.\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0"},"items":[{"id":1,"title":"Title","author":"Author","condition":"Good","condition_notes":"notes","location":"Shelf 2, book 7 from left","market_price":"$10","quick_price":"$7","dealer_price":"$2","time_to_sell_market":"2-4 weeks","time_to_sell_quick":"3-7 days","priority":"medium","platform_tip":"eBay","rationale":"reason"}]}';
+var PROMPT_BOOKS = 'You are an expert used book buyer and reseller. Analyze the uploaded image(s) of books and identify every visible book.\nFor each item include a "location" field. Format EXACTLY as: "Shelf N, X%" where N is the shelf number counting from top (Shelf 1 = topmost shelf) and X is the horizontal position as a percentage from the left edge of the image, rounded to the nearest 5% (e.g. 0%, 5%, 10%...100%). Example: "Shelf 2, 25%" or "Shelf 1, 70%". No other words — just shelf number and percentage.\nOMIT any item where the expected resale market price is under $5 — only include books worth listing.\nFor each book provide three price points: market_price (what a patient private seller gets), quick_price (priced to sell within days), and dealer_price (what a used book dealer or buyback service would pay wholesale — typically 10-30% of market value).\nCRITICAL: Respond with ONE valid JSON object only. No markdown. No code fences. No text before or after. Start with { end with }. Double quotes only. No trailing commas.\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0"},"items":[{"id":1,"title":"Title","author":"Author","condition":"Good","condition_notes":"notes","location":"Shelf 2, 25%","market_price":"$10","quick_price":"$7","dealer_price":"$2","time_to_sell_market":"2-4 weeks","time_to_sell_quick":"3-7 days","priority":"medium","platform_tip":"eBay","rationale":"reason"}]}';
 
 function buildCoinPrompt() {
   var cols = parseInt(document.getElementById('grid-cols') ? document.getElementById('grid-cols').value : '3') || 3;
@@ -757,7 +757,7 @@ var PROMPT_MEMO = 'You are an expert sports memorabilia appraiser and reseller w
 
 var PROMPT_GLASS = 'You are an expert antiques appraiser and reseller specializing in glassware, ceramics, pottery, porcelain, and decorative arts. Analyze the uploaded image(s) and identify each piece.\nFor each piece assess: maker or manufacturer, pattern name, production era/date range, form (e.g. vase, bowl, plate, figurine), color and decoration technique, any visible maker marks or signatures, condition including chips/cracks/crazing/repairs/fading, and rarity.\nFor condition use standard terms: Mint, Excellent, Very Good, Good, Fair, Poor.\nCRITICAL: Respond with ONE valid JSON object only. No markdown. No code fences. No text before or after. Start with { end with }. Double quotes only. No trailing commas.\nProvide three price points: market_price (patient private seller), quick_price (priced to sell fast), dealer_price (what an antique dealer would pay wholesale — typically 30-50% of market).\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0","highlight":"most notable piece"},"items":[{"id":1,"item_type":"Vase","maker":"Rookwood Pottery","pattern":"Standard Glaze","form":"Vase","era":"1890-1910","color_decoration":"Brown to orange standard glaze with floral motif","makers_mark":"Rookwood flame mark with Roman numeral date","condition":"Very Good","condition_notes":"No chips or cracks, minor scratching to glaze","market_price":"$280","quick_price":"$190","dealer_price":"$110","time_to_sell_market":"3-8 weeks","time_to_sell_quick":"1-2 weeks","priority":"high","platform_tip":"eBay, Replacements.com, Ruby Lane","rationale":"Rookwood standard glaze pieces with clear flame marks are consistently sought by collectors"}]}';
 
-var PROMPT_ELEC = 'You are an expert consumer electronics and video game reseller with deep knowledge of vintage and modern electronics, gaming consoles, cartridges, handhelds, computers, audio equipment, and related accessories. Analyze the uploaded image(s) and identify each item.\nFor each item include a location field counting shelves from top (Shelf 1, Shelf 2...) and item position from left by count (e.g. Shelf 2, item 3 from left). OMIT any item where market price is under $5.\nFor each item assess: brand, model, approximate production year or era, condition of housing/screen/ports, visible damage or modifications, completeness (for games: cart/disc only, with box, complete in box CIB, sealed), and any accessories visible.\nFor games completeness use: Cart/Disc Only | With Box | Complete in Box (CIB) | Sealed.\nCRITICAL: Respond with ONE valid JSON object only. No markdown. No code fences. No text before or after. Start with { end with }. Double quotes only. No trailing commas.\nProvide three price points: market_price (patient private seller), quick_price (priced to sell fast), dealer_price (what a used game/electronics shop would pay — typically 40-60% of market for common items, less for slow movers).\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0","highlight":"most valuable item"},"items":[{"id":1,"item_type":"Video Game","brand":"Nintendo","model":"The Legend of Zelda","platform":"NES","year_era":"1987","completeness":"Cart Only","condition":"Good","condition_notes":"Label intact, minor edge wear on cart, no writing","location":"Shelf 3, item 1 from left","market_price":"$25","quick_price":"$18","dealer_price":"$10","time_to_sell_market":"1-3 weeks","time_to_sell_quick":"3-7 days","priority":"medium","platform_tip":"eBay, DKOldies, Facebook Marketplace","rationale":"Common NES title, cart-only copies sell steadily but competitively"}]}';
+var PROMPT_ELEC = 'You are an expert consumer electronics and video game reseller with deep knowledge of vintage and modern electronics, gaming consoles, cartridges, handhelds, computers, audio equipment, and related accessories. Analyze the uploaded image(s) and identify each item.\nFor each item include a "location" field in the format "Shelf N, X%" (e.g. "Shelf 2, 25%"). Shelf counted from top, percentage from left edge rounded to nearest 5%. OMIT items under $5 market value.\nFor each item assess: brand, model, approximate production year or era, condition of housing/screen/ports, visible damage or modifications, completeness (for games: cart/disc only, with box, complete in box CIB, sealed), and any accessories visible.\nFor games completeness use: Cart/Disc Only | With Box | Complete in Box (CIB) | Sealed.\nCRITICAL: Respond with ONE valid JSON object only. No markdown. No code fences. No text before or after. Start with { end with }. Double quotes only. No trailing commas.\nProvide three price points: market_price (patient private seller), quick_price (priced to sell fast), dealer_price (what a used game/electronics shop would pay — typically 40-60% of market for common items, less for slow movers).\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0","highlight":"most valuable item"},"items":[{"id":1,"item_type":"Video Game","brand":"Nintendo","model":"The Legend of Zelda","platform":"NES","year_era":"1987","completeness":"Cart Only","condition":"Good","condition_notes":"Label intact, minor edge wear on cart, no writing","location":"Shelf 1, 5%","market_price":"$25","quick_price":"$18","dealer_price":"$10","time_to_sell_market":"1-3 weeks","time_to_sell_quick":"3-7 days","priority":"medium","platform_tip":"eBay, DKOldies, Facebook Marketplace","rationale":"Common NES title, cart-only copies sell steadily but competitively"}]}';
 
 
 // ── JSON REPAIR ───────────────────────────────────────
@@ -1258,27 +1258,27 @@ function renderCompareTable(selected) {
     return matches / Math.max(wa.length, wb.length);
   }
 
-  // Extract shelf number from location string (e.g. "Shelf 2, book 4" -> 2)
+  // Extract shelf number from "Shelf N, X%" format
   function shelfNum(loc) {
     if (!loc) return -1;
     var m = loc.match(/shelf\s*(\d+)/i);
     return m ? parseInt(m[1]) : -1;
   }
 
-  // Extract position number from location string (e.g. "Shelf 2, book 4" -> 4)
+  // Extract percentage position from "Shelf N, X%" format
   function posNum(loc) {
     if (!loc) return -1;
-    var m = loc.match(/(?:book|item|#)\s*(\d+)/i) || loc.match(/(\d+)\s*from/i) || loc.match(/,\s*(\d+)/);
+    var m = loc.match(/(\d+)%/);
     return m ? parseInt(m[1]) : -1;
   }
 
-  // Two locations are "same copy" if same shelf AND position within 2
+  // Same copy = same shelf AND percentage within 15% (one shelf position)
   function sameLocation(locA, locB) {
-    if (!locA || !locB) return true; // unknown location — don't split
+    if (!locA || !locB) return true;
     var sA = shelfNum(locA), sB = shelfNum(locB);
-    if (sA !== -1 && sB !== -1 && sA !== sB) return false; // different shelves = definitely different
+    if (sA !== -1 && sB !== -1 && sA !== sB) return false;
     var pA = posNum(locA), pB = posNum(locB);
-    if (pA !== -1 && pB !== -1 && Math.abs(pA - pB) > 2) return false; // positions >2 apart = different
+    if (pA !== -1 && pB !== -1 && Math.abs(pA - pB) > 15) return false;
     return true;
   }
 
@@ -1421,7 +1421,7 @@ function renderCompareTable(selected) {
 
     // For engines that didn't find this item, show a "not found" cell
     function cellFor(eng, fn) {
-      if (!mi.matches[eng]) return '<td class="engine-cell" style="background:rgba(155,35,53,.05)"><span style="font-size:11px;color:var(--ink-faint);font-style:italic">Not identified<br>(below threshold or missed)</span></td>';
+      if (!mi.matches[eng]) return '<td class="engine-cell" style="background:rgba(155,35,53,.04);color:var(--ink-faint);font-size:11px;font-style:italic;text-align:center">—</td>';
       return fn(mi.matches[eng]);
     }
 
@@ -1523,11 +1523,20 @@ function renderCompareTable(selected) {
     }).join('') + '</tr>';
   });
 
+  // Store masterItems for sort use
+  window._lastMasterItems = masterItems;
+  window._lastSelected = selected;
+
   document.getElementById('results-area').innerHTML =
     '<div class="compare-banner" style="background:#E6F4EA;border-color:rgba(45,106,79,.25);color:var(--green)">' +
-    'All ' + selected.length + ' engines finished &mdash; ' + masterItems.length + ' unique items matched across models. ' +
-    '<strong>Yellow flags</strong> = engines disagree. <strong>Red cells</strong> = item not found by that engine.</div>' +
-    '<div style="margin-bottom:1rem"><button class="clear-btn" style="background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;cursor:pointer" onclick="clearAll()">Clear &amp; start over</button></div>' +
+    'All ' + selected.length + ' engines finished &mdash; ' + masterItems.length + ' items matched. ' +
+    '<strong>Yellow</strong> = disagree. <strong>—</strong> = not found by that engine.</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">' +
+    '<button class="clear-btn" style="background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;cursor:pointer" onclick="clearAll()">Clear &amp; start over</button>' +
+    '<span style="font-size:11px;color:var(--ink-light);text-transform:uppercase;letter-spacing:1px">Sort by quick-turn:</span>' +
+    selected.map(function(eng){ return '<button class="sort-btn" id="csort_'+eng+'" onclick="sortCompareByQuick(\''+eng+'\')" style="font-size:11px">'+eng+'</button>'; }).join('') +
+    '<button class="sort-btn" id="csort_detected" onclick="sortCompareByQuick(null)" style="font-size:11px">Reset</button>' +
+    '</div>' +
     '<div class="compare-table-wrap"><table class="compare-table">' +
     '<thead><tr><th>Item / Field</th>' + headerCols + '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
@@ -1582,7 +1591,186 @@ function clearAll() {
   document.getElementById('extra-notes').value = '';
 }
 
+// ── SHEET EXPORT ──────────────────────────────────────
+var selectedItems = {};
+
+function saveScriptUrl() {
+  var url = document.getElementById('apps-script-url').value.trim();
+  try { if (url) localStorage.setItem('rs_apps_script_url', url); } catch(e) {}
+}
+
+function loadScriptUrl() {
+  try {
+    var url = localStorage.getItem('rs_apps_script_url');
+    if (url) document.getElementById('apps-script-url').value = url;
+  } catch(e) {}
+}
+
+function updateExportBar() {
+  var count = Object.keys(selectedItems).length;
+  document.getElementById('export-count-num').textContent = count;
+  document.getElementById('export-bar').classList.toggle('visible', count > 0);
+}
+
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(function() { t.className = 'toast'; }, 3500);
+}
+
+function getSheetTab() {
+  if (mode === 'books') return 'Books';
+  if (mode === 'coins') return 'Coins';
+  return 'Other Stuff';
+}
+
+function buildExportRow(item, engines, tab) {
+  var date = new Date().toLocaleDateString('en-US');
+  var engStr = engines.join(', ');
+  if (tab === 'Books') {
+    return { 'Date': date, 'Title': item.title||'', 'Author': item.author||'',
+      'Location': item.location||'', 'Condition': item.condition||'',
+      'Condition Notes': item.condition_notes||'', 'Market Price': item.market_price||'',
+      'Quick-Turn': item.quick_price||'', 'Dealer Price': item.dealer_price||'',
+      'Platform': item.platform_tip||'', 'Engines': engStr, 'Notes': '' };
+  } else if (tab === 'Coins') {
+    return { 'Date': date, 'Coin Name': item.coin_name||'', 'Year': item.year||'',
+      'Mint Mark': item.mint_mark||'', 'Mint Mark Observed': item.mint_mark_raw||'',
+      'Sheldon Grade': item.sheldon_grade||'', 'Grade Confidence': item.grade_confidence||'',
+      'Grade Notes': item.grade_notes||'', 'Grid/Position': item.id||item.location||'',
+      'Market Price': item.market_price||'', 'Quick-Turn': item.quick_price||'',
+      'Dealer Price': item.dealer_price||'', 'Engines': engStr, 'Notes': '' };
+  } else {
+    return { 'Date': date,
+      'Item Type': item.item_type||(mode==='glass'?'Glassware':mode==='elec'?'Electronics':'Memorabilia'),
+      'Title / Name': item.title||item.maker||[item.brand,item.model].filter(Boolean).join(' ')||'',
+      'Sport / Category': item.sport||item.era||item.year_era||'',
+      'Event / Details': item.event_type||item.teams||item.pattern||item.platform||'',
+      'Condition': item.condition||'', 'Signatures': item.signatures||'',
+      'Location': item.location||'', 'Market Price': item.market_price||'',
+      'Quick-Turn': item.quick_price||'', 'Dealer Price': item.dealer_price||'',
+      'Platform': item.platform_tip||'', 'Engines': engStr, 'Notes': '' };
+  }
+}
+
+async function exportToSheets() {
+  var url = document.getElementById('apps-script-url').value.trim();
+  if (!url) { showToast('Paste your Apps Script URL first', true); return; }
+  var keys = Object.keys(selectedItems);
+  if (!keys.length) { showToast('No items selected', true); return; }
+  var btn = document.getElementById('export-btn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  var tab = getSheetTab();
+  var rows = keys.map(function(k){ var s=selectedItems[k]; return buildExportRow(s.item,s.engines,tab); });
+  try {
+    var resp = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({tab:tab,rows:rows}) });
+    var data = await resp.json();
+    if (data.success) {
+      showToast('\u2713 ' + rows.length + ' item(s) sent to ' + tab + '!');
+      selectedItems = {};
+      document.querySelectorAll('.item-checkbox').forEach(function(cb){ cb.checked=false; });
+      updateExportBar();
+    } else { showToast('Sheet error: '+(data.error||'unknown'), true); }
+  } catch(err) { showToast('Failed: '+err.message, true); }
+  finally { btn.disabled=false; btn.textContent='\u2197 Send to Google Sheets'; }
+}
+
+function injectCheckboxes() {
+  if (!lastResult) return;
+  var tab = getSheetTab();
+  var items = lastResult.items || [];
+  document.querySelectorAll('.item-card').forEach(function(card, idx) {
+    if (card.querySelector('.item-checkbox')) return;
+    var item = items[idx]; if (!item) return;
+    var key = 'item_'+idx+'_'+(item.title||item.coin_name||item.maker||item.model||idx).toString().substring(0,20);
+    var cb = document.createElement('input');
+    cb.type='checkbox'; cb.className='item-checkbox'; cb.id='ichk_'+idx;
+    cb.style.cssText='width:16px;height:16px;accent-color:var(--gold);cursor:pointer;margin-right:6px;vertical-align:middle;flex-shrink:0';
+    var lbl = document.createElement('label');
+    lbl.htmlFor='ichk_'+idx;
+    lbl.style.cssText='font-size:11px;color:var(--ink-light);cursor:pointer;font-family:DM Mono,monospace';
+    lbl.textContent='Add to sheet';
+    var row = document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)';
+    row.appendChild(cb); row.appendChild(lbl);
+    cb.addEventListener('change', function(e) {
+      if (e.target.checked) selectedItems[key]={item:item,engines:['single'],tab:tab};
+      else delete selectedItems[key];
+      updateExportBar();
+    });
+    card.insertBefore(row, card.firstChild);
+  });
+}
+
+function injectCompareCheckboxes(masterItemsList, selected) {
+  if (!masterItemsList) return;
+  var tab = getSheetTab();
+  // Add checkboxes to section headers in compare table
+  var sectionHeaders = document.querySelectorAll('.compare-table .section-header td');
+  // First header is "Summary", skip it. Items start at index 1.
+  masterItemsList.forEach(function(mi, idx) {
+    var td = sectionHeaders[idx+1]; // +1 for Summary header
+    if (!td || td.querySelector('.item-checkbox')) return;
+    var bestItem = null;
+    selected.forEach(function(eng) {
+      var it = mi.matches[eng];
+      if (!bestItem || (it && parsePrice(it.market_price) > parsePrice(bestItem.market_price))) bestItem=it;
+    });
+    if (!bestItem) return;
+    var key = 'mi_'+idx+'_'+mi.key.substring(0,20);
+    var cb = document.createElement('input');
+    cb.type='checkbox'; cb.className='item-checkbox';
+    cb.style.cssText='width:14px;height:14px;accent-color:var(--gold);cursor:pointer;margin-left:8px;vertical-align:middle';
+    cb.title='Add to Google Sheets';
+    cb.addEventListener('change', function(e) {
+      if (e.target.checked) selectedItems[key]={item:bestItem,engines:Object.keys(mi.matches),tab:tab};
+      else delete selectedItems[key];
+      updateExportBar();
+    });
+    td.appendChild(cb);
+  });
+}
+
+// ── COMPARE TABLE SORT ────────────────────────────────
+function sortCompareByQuick(eng) {
+  var masterItems = window._lastMasterItems;
+  var selected = window._lastSelected;
+  if (!masterItems || !selected) return;
+
+  // Update active button
+  document.querySelectorAll('[id^="csort_"]').forEach(function(b){ b.classList.remove('active'); });
+  var activeId = eng ? 'csort_' + eng : 'csort_detected';
+  var activeBtn = document.getElementById(activeId);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  if (!eng) {
+    // Reset to original order (most engines first, then price)
+    masterItems.sort(function(a, b) {
+      var ac = Object.keys(a.matches).length, bc = Object.keys(b.matches).length;
+      if (bc !== ac) return bc - ac;
+      var ap = 0, bp = 0;
+      selected.forEach(function(e){ ap=Math.max(ap,parsePrice((a.matches[e]||{}).quick_price)); bp=Math.max(bp,parsePrice((b.matches[e]||{}).quick_price)); });
+      return bp - ap;
+    });
+  } else {
+    // Sort by quick_price of the specified engine, highest first
+    // Items not found by that engine go to the bottom
+    masterItems.sort(function(a, b) {
+      var ap = a.matches[eng] ? parsePrice(a.matches[eng].quick_price) : -1;
+      var bp = b.matches[eng] ? parsePrice(b.matches[eng].quick_price) : -1;
+      return bp - ap;
+    });
+  }
+  // Re-render
+  renderCompareTable(selected);
+  window._lastMasterItems = masterItems; // preserve sorted order
+  window._lastSelected = selected;
+}
+
+
 init();
+loadScriptUrl();
 </script>
 <!-- EXPORT BAR -->
 <div class="export-bar" id="export-bar">
