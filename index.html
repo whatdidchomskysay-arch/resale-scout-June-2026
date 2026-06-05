@@ -233,9 +233,13 @@
     color: var(--paper); flex: 1; outline: none;
   }
   .export-url-input::placeholder { color: rgba(255,255,255,.35); }
-  .item-checkbox { width: 16px; height: 16px; accent-color: var(--gold); cursor: pointer; flex-shrink: 0; }
-  .item-check-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-  .item-check-label { font-size: 12px; color: var(--ink-mid); user-select: none; cursor: pointer; }
+  .item-checkbox { width: 17px; height: 17px; accent-color: var(--gold); cursor: pointer; flex-shrink: 0; }
+  .items-container { position: relative; }
+  .check-all-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 6px 10px; background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius); }
+  .check-all-bar label { font-size: 12px; color: var(--ink-mid); cursor: pointer; font-family: "DM Mono", monospace; user-select: none; }
+  .cards-with-checks { display: grid; grid-template-columns: 28px 1fr; gap: 0; }
+  .card-check-col { display: flex; align-items: flex-start; justify-content: center; padding-top: 14px; }
+  .card-check-col input { width: 17px; height: 17px; accent-color: var(--gold); cursor: pointer; }
   .toast {
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
     background: var(--green); color: white; padding: 10px 20px;
@@ -1078,6 +1082,7 @@ function setSort(key) {
   else if (key === 'quick-desc') sorted.sort(function(a, b) { return parsePrice(b.quick_price) - parsePrice(a.quick_price); });
   else if (key === 'priority') sorted.sort(function(a, b) { return priorityOrder(a.priority) - priorityOrder(b.priority); });
   document.getElementById('items-list').innerHTML = buildCards(sorted, mode);
+  setTimeout(injectCheckboxes, 50);
 }
 
 // ── RENDER HELPERS ────────────────────────────────────
@@ -1344,7 +1349,7 @@ function renderCompareTable(selected) {
         matched.matches[eng] = item;
         var newTitle = item.title || item.coin_name || item.maker || item.model || '';
         if (newTitle.length > (matched.canonical_title||'').length) matched.canonical_title = newTitle;
-        if (item.location && (!matched.location || item.location.length > matched.location.length)) matched.location = item.location;
+        if (item.location && (!matched.location || item.location.length > matched.location.length)) matched.location = normalizeLocation(item.location);
       } else {
         // New master item (either new title or duplicate copy at different location)
         var existingCount = masterItems.filter(function(mi){ return similarity(mi.key, k) >= 0.4; }).length;
@@ -1352,23 +1357,22 @@ function renderCompareTable(selected) {
         masterItems.push({
           key: k,
           canonical_title: (item.title || item.coin_name || item.maker || item.model || item.item_type || k) + copyLabel,
-          location: item.location || '',
+          location: normalizeLocation(item.location || ''),
           matches: (function(){ var m = {}; m[eng] = item; return m; })()
         });
       }
     });
   });
 
-  // Sort: items seen by most engines first, then by highest market price
+  // Default sort: highest average quick_price across all selected engines
   masterItems.sort(function(a, b) {
-    var ac = Object.keys(a.matches).length, bc = Object.keys(b.matches).length;
-    if (bc !== ac) return bc - ac;
-    var ap = 0, bp = 0;
-    selected.forEach(function(eng) {
-      ap = Math.max(ap, parsePrice((a.matches[eng]||{}).market_price));
-      bp = Math.max(bp, parsePrice((b.matches[eng]||{}).market_price));
-    });
-    return bp - ap;
+    function avgQuick(mi) {
+      var vals = selected.map(function(e){ return mi.matches[e] ? parsePrice(mi.matches[e].quick_price) : 0; });
+      var sum = vals.reduce(function(s,v){ return s+v; }, 0);
+      var count = vals.filter(function(v){ return v > 0; }).length;
+      return count ? sum / count : 0;
+    }
+    return avgQuick(b) - avgQuick(a);
   });
 
   // ── BUILD TABLE ───────────────────────────────────────────────────
@@ -1527,6 +1531,9 @@ function renderCompareTable(selected) {
   window._lastMasterItems = masterItems;
   window._lastSelected = selected;
 
+  window._lastMasterItems = masterItems;
+  window._lastSelected = selected;
+
   document.getElementById('results-area').innerHTML =
     '<div class="compare-banner" style="background:#E6F4EA;border-color:rgba(45,106,79,.25);color:var(--green)">' +
     'All ' + selected.length + ' engines finished &mdash; ' + masterItems.length + ' items matched. ' +
@@ -1538,16 +1545,25 @@ function renderCompareTable(selected) {
     '<button class="sort-btn" id="csort_detected" onclick="sortCompareByQuick(null)" style="font-size:11px">Reset</button>' +
     '</div>' +
     '<div class="compare-table-wrap"><table class="compare-table">' +
-    '<thead><tr><th>Item / Field</th>' + headerCols + '</tr></thead>' +
+    '<thead><tr>' +
+    '<th style="width:32px;text-align:center"><input type="checkbox" id="compare_chk_all" title="Select all" style="accent-color:var(--gold);cursor:pointer" onchange="compareCheckAll(this.checked)"></th>' +
+    '<th>Item / Field</th>' + headerCols + '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table></div>';
   setTimeout(function(){ injectCompareCheckboxes(masterItems, selected); }, 100);
 }
 
 
+function avgPrice(item, field) {
+  return parsePrice(item[field] || '0');
+}
+
 function renderResults(result, bannerInfo) {
   lastResult = result;
-  var items = result.items || [];
+  var items = (result.items || []).slice();
+  // Default sort: highest quick_price first
+  items.sort(function(a, b) { return avgPrice(b,'quick_price') - avgPrice(a,'quick_price'); });
+  result.items = items;
   var s = result.summary || {};
   var isCoins = mode === 'coins';
   var isMemo = mode === 'memo';
@@ -1571,10 +1587,10 @@ function renderResults(result, bannerInfo) {
     '<div class="metric"><div class="metric-label">' + highlightLabel + '</div><div class="metric-val sm">' + highlightVal + '</div></div>' +
     '</div>' +
     '<div class="sort-bar"><span class="sort-label">Sort:</span>' +
-    '<button class="sort-btn active" data-sort="detected" onclick="setSort(\'detected\')">As detected</button>' +
+    '<button class="sort-btn" data-sort="detected" onclick="setSort(\'detected\')">As detected</button>' +
     '<button class="sort-btn" data-sort="market-desc" onclick="setSort(\'market-desc\')">Market \u2193</button>' +
     '<button class="sort-btn" data-sort="market-asc" onclick="setSort(\'market-asc\')">Market \u2191</button>' +
-    '<button class="sort-btn" data-sort="quick-desc" onclick="setSort(\'quick-desc\')">Quick-turn \u2193</button>' +
+    '<button class="sort-btn active" data-sort="quick-desc" onclick="setSort(\'quick-desc\')">Quick-turn \u2193</button>' +
     '<button class="sort-btn" data-sort="priority" onclick="setSort(\'priority\')">Priority</button>' +
     '</div>' +
     '<div id="items-list">' + buildCards(items, mode) + '</div>' +
@@ -1589,6 +1605,20 @@ function clearAll() {
   document.getElementById('results-area').innerHTML = '';
   document.getElementById('error-area').innerHTML = '';
   document.getElementById('extra-notes').value = '';
+}
+
+
+function compareCheckAll(checked) {
+  document.querySelectorAll('.compare-table .item-checkbox').forEach(function(cb){
+    cb.checked = checked;
+    cb.dispatchEvent(new Event('change'));
+  });
+}
+
+function normalizeLocation(loc) {
+  if (!loc) return loc;
+  // Snap any percentage to nearest 5
+  return loc.replace(/(\d+)%/g, function(m, n) { return (Math.round(parseInt(n)/5)*5)+'%'; });
 }
 
 // ── SHEET EXPORT ──────────────────────────────────────
@@ -1665,7 +1695,11 @@ async function exportToSheets() {
   var rows = keys.map(function(k){ var s=selectedItems[k]; return buildExportRow(s.item,s.engines,tab); });
   try {
     var resp = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({tab:tab,rows:rows}) });
-    var data = await resp.json();
+    var respText = await resp.text();
+    if (respText.trim().charAt(0) === '<') {
+      showToast('Wrong URL or stale deployment — re-deploy Apps Script and paste new URL', true); return;
+    }
+    var data; try { data = JSON.parse(respText); } catch(e) { showToast('Bad response: '+respText.substring(0,60), true); return; }
     if (data.success) {
       showToast('\u2713 ' + rows.length + ' item(s) sent to ' + tab + '!');
       selectedItems = {};
@@ -1680,55 +1714,100 @@ function injectCheckboxes() {
   if (!lastResult) return;
   var tab = getSheetTab();
   var items = lastResult.items || [];
-  document.querySelectorAll('.item-card').forEach(function(card, idx) {
-    if (card.querySelector('.item-checkbox')) return;
+  var itemsList = document.getElementById('items-list');
+  if (!itemsList || itemsList.querySelector('.check-all-bar')) return;
+
+  // Wrap existing cards in a grid layout with left checkbox column
+  var cards = Array.from(itemsList.querySelectorAll('.item-card'));
+  if (!cards.length) return;
+
+  // Build check-all bar
+  var allBar = document.createElement('div');
+  allBar.className = 'check-all-bar';
+  allBar.innerHTML = '<input type="checkbox" id="chk_all" style="width:17px;height:17px;accent-color:var(--gold);cursor:pointer">' +
+    '<label for="chk_all" style="font-size:12px;color:var(--ink-mid);cursor:pointer;font-family:DM Mono,monospace;user-select:none">Select all for export</label>';
+  itemsList.insertBefore(allBar, itemsList.firstChild);
+
+  document.getElementById('chk_all').addEventListener('change', function(e) {
+    itemsList.querySelectorAll('.card-cb').forEach(function(cb){ cb.checked = e.target.checked; cb.dispatchEvent(new Event('change')); });
+  });
+
+  // Wrap each card with a left checkbox column
+  cards.forEach(function(card, idx) {
+    if (card.parentElement.classList.contains('cards-with-checks')) return;
     var item = items[idx]; if (!item) return;
     var key = 'item_'+idx+'_'+(item.title||item.coin_name||item.maker||item.model||idx).toString().substring(0,20);
+
+    var wrapper = document.createElement('div');
+    wrapper.className = 'cards-with-checks';
+    wrapper.style.marginBottom = '10px';
+
+    var checkCol = document.createElement('div');
+    checkCol.className = 'card-check-col';
     var cb = document.createElement('input');
-    cb.type='checkbox'; cb.className='item-checkbox'; cb.id='ichk_'+idx;
-    cb.style.cssText='width:16px;height:16px;accent-color:var(--gold);cursor:pointer;margin-right:6px;vertical-align:middle;flex-shrink:0';
-    var lbl = document.createElement('label');
-    lbl.htmlFor='ichk_'+idx;
-    lbl.style.cssText='font-size:11px;color:var(--ink-light);cursor:pointer;font-family:DM Mono,monospace';
-    lbl.textContent='Add to sheet';
-    var row = document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)';
-    row.appendChild(cb); row.appendChild(lbl);
+    cb.type = 'checkbox'; cb.className = 'card-cb item-checkbox'; cb.id = 'ichk_'+idx;
+    cb.title = 'Add to Google Sheets';
     cb.addEventListener('change', function(e) {
       if (e.target.checked) selectedItems[key]={item:item,engines:['single'],tab:tab};
       else delete selectedItems[key];
+      // Update check-all state
+      var allCbs = itemsList.querySelectorAll('.card-cb');
+      var allChecked = Array.from(allCbs).every(function(c){ return c.checked; });
+      var chkAll = document.getElementById('chk_all');
+      if (chkAll) chkAll.checked = allChecked;
       updateExportBar();
     });
-    card.insertBefore(row, card.firstChild);
+    checkCol.appendChild(cb);
+
+    // Remove bottom margin from card since wrapper handles it
+    card.style.marginBottom = '0';
+    card.parentNode.insertBefore(wrapper, card);
+    wrapper.appendChild(checkCol);
+    wrapper.appendChild(card);
   });
 }
 
 function injectCompareCheckboxes(masterItemsList, selected) {
   if (!masterItemsList) return;
   var tab = getSheetTab();
-  // Add checkboxes to section headers in compare table
-  var sectionHeaders = document.querySelectorAll('.compare-table .section-header td');
-  // First header is "Summary", skip it. Items start at index 1.
-  masterItemsList.forEach(function(mi, idx) {
-    var td = sectionHeaders[idx+1]; // +1 for Summary header
-    if (!td || td.querySelector('.item-checkbox')) return;
+  var allRows = document.querySelectorAll('.compare-table tbody tr');
+  var sectionIdx = -1; // track which master item we are on
+
+  allRows.forEach(function(row) {
+    if (!row.classList.contains('section-header')) return;
+    sectionIdx++;
+    if (sectionIdx === 0) return; // skip Summary header
+
+    var miIdx = sectionIdx - 1;
+    var mi = masterItemsList[miIdx]; if (!mi) return;
+    if (row.querySelector('.item-checkbox')) return;
+
     var bestItem = null;
     selected.forEach(function(eng) {
       var it = mi.matches[eng];
       if (!bestItem || (it && parsePrice(it.market_price) > parsePrice(bestItem.market_price))) bestItem=it;
     });
     if (!bestItem) return;
-    var key = 'mi_'+idx+'_'+mi.key.substring(0,20);
+    var key = 'mi_'+miIdx+'_'+mi.key.substring(0,20);
+
+    // Insert checkbox as first cell
+    var td = document.createElement('td');
+    td.style.cssText = 'text-align:center;vertical-align:middle;background:var(--cream)';
     var cb = document.createElement('input');
     cb.type='checkbox'; cb.className='item-checkbox';
-    cb.style.cssText='width:14px;height:14px;accent-color:var(--gold);cursor:pointer;margin-left:8px;vertical-align:middle';
+    cb.style.cssText='width:15px;height:15px;accent-color:var(--gold);cursor:pointer';
     cb.title='Add to Google Sheets';
     cb.addEventListener('change', function(e) {
       if (e.target.checked) selectedItems[key]={item:bestItem,engines:Object.keys(mi.matches),tab:tab};
       else delete selectedItems[key];
+      // sync check-all
+      var allCbs = document.querySelectorAll('.compare-table .item-checkbox');
+      var allChk = document.getElementById('compare_chk_all');
+      if (allChk) allChk.checked = Array.from(allCbs).every(function(c){ return c.checked; });
       updateExportBar();
     });
     td.appendChild(cb);
+    row.insertBefore(td, row.firstChild);
   });
 }
 
@@ -1762,10 +1841,15 @@ function sortCompareByQuick(eng) {
       return bp - ap;
     });
   }
-  // Re-render
+  // Save sorted order, render, then restore (renderCompareTable resets _lastMasterItems)
+  var sortedSnapshot = masterItems.slice();
   renderCompareTable(selected);
-  window._lastMasterItems = masterItems; // preserve sorted order
+  window._lastMasterItems = sortedSnapshot;
   window._lastSelected = selected;
+  // Re-apply active button after re-render
+  document.querySelectorAll('[id^="csort_"]').forEach(function(b){ b.classList.remove('active'); });
+  var btn2 = document.getElementById(eng ? 'csort_'+eng : 'csort_detected');
+  if (btn2) btn2.classList.add('active');
 }
 
 
