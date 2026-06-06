@@ -103,24 +103,24 @@
 
   .error-box { background: var(--red-light); border: 1px solid rgba(155,35,53,.25); border-radius: var(--radius-lg); padding: 14px 18px; margin-top: 1rem; font-size: 13px; color: var(--red); line-height: 1.6; }
 
-  .results { margin-top: 2rem; }
-  .results-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .results { margin-top: 1rem; }
+  .results-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: .5rem; padding-bottom: .5rem; border-bottom: 0.5px solid var(--border); }
   .results-header h2 { font-family: 'DM Serif Display', serif; font-size: 24px; }
   .clear-btn { font-size: 13px; color: var(--ink-light); background: none; border: none; cursor: pointer; text-decoration: underline; }
 
-  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
-  .metric { background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: .75rem; }
+  .metric { background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 8px 10px; }
   .metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-light); margin-bottom: 5px; }
-  .metric-val { font-family: 'DM Serif Display', serif; font-size: 26px; line-height: 1; }
+  .metric-val { font-family: 'DM Serif Display', serif; font-size: 20px; line-height: 1; }
   .metric-val.sm { font-size: 13px; padding-top: 5px; line-height: 1.4; }
 
-  .sort-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .sort-bar { display: flex; align-items: center; gap: 4px; margin-bottom: .75rem; flex-wrap: wrap; }
   .sort-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-light); }
-  .sort-btn { font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 11px; border: 1px solid var(--border-strong); border-radius: 20px; background: transparent; color: var(--ink-mid); cursor: pointer; transition: all .15s; }
+  .sort-btn { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; border: 1px solid var(--border-strong); border-radius: 20px; background: transparent; color: var(--ink-mid); cursor: pointer; transition: all .15s; }
   .sort-btn:hover { border-color: var(--ink); color: var(--ink); }
   .sort-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
-  .item-card { background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem; margin-bottom: 10px; transition: box-shadow .15s; }
+  .item-card { background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: .65rem .8rem; margin-bottom: 6px; transition: box-shadow .15s; }
   .item-card:hover { box-shadow: 0 2px 12px rgba(26,23,20,.06); }
   .item-card.high { border-left: 3px solid var(--green); }
   .item-card.medium { border-left: 3px solid var(--gold); }
@@ -140,10 +140,10 @@
   .badge-gray { background: var(--cream); color: var(--ink-mid); border: 1px solid var(--border); }
   .platform-tip { font-size: 11px; color: var(--blue); background: var(--blue-light); padding: 2px 8px; border-radius: 20px; font-family: 'DM Mono', monospace; }
 
-  .condition-note { font-size: 12px; color: var(--ink-mid); background: var(--cream); border-radius: var(--radius); padding: 7px 11px; margin-bottom: 12px; line-height: 1.5; font-style: italic; }
+  .condition-note { font-size: 11px; color: var(--ink-mid); background: var(--cream); border-radius: var(--radius); padding: 4px 8px; margin-bottom: 7px; line-height: 1.4; font-style: italic; }
 
-  .prices { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-  .price-box { background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 10px 12px; }
+  .prices { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 6px; }
+  .price-box { background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 6px 9px; }
   .price-box.quick { border-color: rgba(184,134,11,.4); background: var(--gold-bg); }
   .price-box.dealer { border-color: rgba(155,35,53,.2); background: var(--red-light); }
   .price-box-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-light); margin-bottom: 3px; }
@@ -157,7 +157,7 @@
   .sheldon-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
   .sheldon-fill { height: 100%; border-radius: 3px; }
 
-  .rationale { font-size: 13px; color: var(--ink-mid); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 9px; }
+  .rationale { font-size: 11px; color: var(--ink-mid); line-height: 1.4; border-top: 0.5px solid var(--border); padding-top: 5px; }
   .notes-wrap { margin-bottom: 1.25rem; }
   .notes-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-light); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
   .notes-label span { font-size: 11px; color: var(--ink-faint); text-transform: none; letter-spacing: 0; font-style: italic; }
@@ -171,7 +171,7 @@
   .notes-field:focus { border-color: var(--gold); }
   .notes-field::placeholder { color: var(--ink-faint); }
 
-  .model-banner { border-radius: var(--radius-lg); padding: 9px 14px; margin-bottom: 1.25rem; font-size: 13px; line-height: 1.6; display: flex; align-items: flex-start; gap: 8px; }
+  .model-banner { border-radius: var(--radius-lg); padding: 6px 10px; margin-bottom: .6rem; font-size: 12px; line-height: 1.4; display: flex; align-items: flex-start; gap: 6px; }
   .model-banner.best { background: #E6F4EA; border: 1px solid rgba(45,106,79,.25); color: var(--green); }
   .model-banner.fallback { background: var(--gold-bg); border: 1px solid rgba(184,134,11,.35); color: #7A5C00; }
   .model-banner.last { background: var(--red-light); border: 1px solid rgba(155,35,53,.2); color: var(--red); }
@@ -183,28 +183,45 @@
   .engine-check { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; color: var(--ink-mid); user-select: none; }
   .engine-check input[type=checkbox] { accent-color: var(--ink); width: 15px; height: 15px; cursor: pointer; }
   .engine-check.disabled { opacity: .35; pointer-events: none; }
-  .compare-banner { background: #E8F0FE; border: 1px solid rgba(66,133,244,.3); border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 1.25rem; font-size: 13px; color: var(--blue); }
+  .compare-banner { background: #E8F0FE; border: 1px solid rgba(66,133,244,.3); border-radius: var(--radius-lg); padding: 5px 10px; margin-bottom: .5rem; font-size: 12px; color: var(--blue); }
 
-  .compare-table-wrap { overflow-x: auto; margin-top: 2rem; }
-  .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .compare-table th { background: var(--ink); color: var(--paper); padding: 10px 12px; text-align: left; font-weight: 500; white-space: nowrap; }
-  .compare-table th.engine-col { text-align: center; min-width: 160px; }
-  .compare-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .compare-table-wrap { overflow-x: auto; margin-top: .75rem; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .compare-table th { background: var(--ink); color: var(--paper); padding: 5px 8px; text-align: left; font-weight: 500; white-space: nowrap; font-size:12px; }
+  .compare-table th.engine-col { text-align: center; min-width: 120px; }
+  .compare-table td { padding: 4px 7px; border-bottom: 0.5px solid var(--border); vertical-align: top; }
   .compare-table tr:nth-child(even) td { background: var(--paper); }
   .compare-table tr:nth-child(odd) td { background: var(--cream); }
-  .compare-table td.item-label { font-weight: 600; color: var(--ink); white-space: nowrap; border-right: 1px solid var(--border-strong); background: var(--paper) !important; min-width: 130px; }
+  .compare-table td.item-label { font-weight: 600; color: var(--ink); white-space: nowrap; border-right: 1px solid var(--border-strong); background: var(--paper) !important; min-width: 80px; font-size:11px; }
   .compare-table td.engine-cell { text-align: center; }
   .compare-table td.field-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-light); background: var(--ink) !important; color: var(--paper) !important; font-weight: 500; padding: 6px 12px; }
   .cell-val { font-family: "DM Mono", monospace; font-size: 12px; }
-  .cell-price { font-family: "DM Serif Display", serif; font-size: 18px; line-height: 1; }
+  .cell-price { font-family: "DM Serif Display", serif; font-size: 14px; line-height: 1; }
   .cell-grade { font-family: "DM Mono", monospace; font-size: 15px; font-weight: 500; }
-  .cell-note { font-size: 11px; color: var(--ink-light); margin-top: 2px; line-height: 1.4; }
-  .grade-bar { height: 4px; border-radius: 2px; margin-top: 4px; }
-  .diff-flag { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: var(--gold-light); color: #7A5C00; font-weight: 500; display: inline-block; margin-top: 3px; }
+  .cell-note { font-size: 10px; color: var(--ink-light); margin-top: 1px; line-height: 1.3; }
+  .grade-bar { height: 3px; border-radius: 2px; margin-top: 2px; }
+  .diff-flag { font-size: 9px; padding: 1px 5px; border-radius: 10px; background: var(--gold-light); color: #7A5C00; font-weight: 500; display: inline-block; margin-top: 1px; }
   .err-cell { font-size: 11px; color: var(--red); font-style: italic; }
   .loading-cell { font-size: 11px; color: var(--ink-light); font-style: italic; }
-  .section-header td { background: var(--cream) !important; font-size: 12px; font-weight: 600; color: var(--ink-mid); text-transform: uppercase; letter-spacing: .8px; padding: 8px 12px; border-top: 2px solid var(--border-strong); }
+  .section-header td { background: var(--cream) !important; font-size: 11px; font-weight: 600; color: var(--ink-mid); text-transform: uppercase; letter-spacing: .5px; padding: 4px 7px; border-top: 1.5px solid var(--border-strong); }
 
+  /* ── SCAN MODE ── */
+  .scan-mode-row { display:none; align-items:center; gap:10px; margin-bottom:1rem; padding:8px 12px; background:var(--paper); border:1px solid var(--border); border-radius:var(--radius-lg); }
+  .scan-mode-row.visible { display:flex; }
+  .scan-toggle { display:flex; gap:0; border:1px solid var(--border-strong); border-radius:var(--radius-lg); overflow:hidden; }
+  .scan-btn { padding:5px 14px; font-size:12px; font-family:"DM Mono",monospace; cursor:pointer; background:transparent; border:none; color:var(--ink-light); transition:all .15s; }
+  .scan-btn.active { background:var(--ink); color:var(--paper); }
+  .scan-desc { font-size:11px; color:var(--ink-light); flex:1; }
+  /* ── SHELF INDEX ── */
+  .shelf-index { margin-top:1.25rem; border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
+  .shelf-index-header { background:var(--ink); color:var(--paper); padding:6px 10px; font-size:12px; font-weight:500; display:flex; justify-content:space-between; align-items:center; }
+  .shelf-index-shelf { border-bottom:0.5px solid var(--border); }
+  .shelf-index-shelf:last-child { border-bottom:none; }
+  .shelf-label { background:var(--cream); font-size:10px; font-weight:600; color:var(--ink-mid); text-transform:uppercase; letter-spacing:.5px; padding:3px 8px; border-bottom:0.5px solid var(--border); }
+  .shelf-books { display:flex; flex-wrap:wrap; gap:4px; padding:6px 8px; }
+  .spine-tag { font-size:10px; font-family:"DM Mono",monospace; background:var(--paper); border:0.5px solid var(--border); border-radius:3px; padding:2px 5px; color:var(--ink-mid); white-space:nowrap; }
+  .spine-tag.valued { border-color:var(--gold); color:var(--ink); background:var(--gold-bg); }
+  .spine-tag.unclear { opacity:.5; font-style:italic; }
   /* ── SHEET EXPORT ── */
   .export-bar {
     position: sticky; bottom: 0; left: 0; right: 0;
@@ -408,6 +425,14 @@
     <strong>Electronics &amp; games tip</strong> — Include photos showing the <strong>model/serial number label</strong>, all ports and connectors, any cosmetic damage, and — for games — the <strong>cartridge/disc, box, and manual</strong> separately if you have them. Completeness (CIB = complete in box) dramatically affects value. The AI assesses model, era, working condition indicators, and completeness.
   </div>
 
+  <div class="scan-mode-row" id="scan-mode-row">
+    <div class="scan-toggle">
+      <button class="scan-btn active" id="scan-quick" onclick="setScanMode('quick')">Quick</button>
+      <button class="scan-btn" id="scan-full" onclick="setScanMode('full')">Full inventory</button>
+    </div>
+    <span class="scan-desc" id="scan-desc">Value items above $5 only</span>
+  </div>
+
   <div class="drop-zone" id="drop-zone"
     onclick="document.getElementById('file-input').click()"
     ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
@@ -551,6 +576,7 @@ function setMode(m) {
   document.getElementById('tab-glass').classList.toggle('active', m === 'glass');
   document.getElementById('tab-elec').classList.toggle('active', m === 'elec');
   document.getElementById('coin-hint').style.display = m === 'coins' ? 'block' : 'none';
+  document.getElementById('scan-mode-row').classList.toggle('visible', m === 'books' || m === 'elec');
   document.getElementById('pairing-panel').style.display = m === 'coins' ? 'block' : 'none';
   document.getElementById('memo-hint').style.display = m === 'memo' ? 'block' : 'none';
   document.getElementById('glass-hint').style.display = m === 'glass' ? 'block' : 'none';
@@ -755,6 +781,13 @@ function buildCoinPrompt() {
 
   return base;
 }
+
+var PROMPT_INVENTORY = 'You are scanning bookshelves to create a complete physical inventory. Your job is ONLY to list every visible book spine — do NOT evaluate, price, or skip any books.\nFor EVERY book visible on EVERY shelf, record:\n- title: best reading of the spine title (use "unclear" if unreadable)\n- author: best reading (use "unknown" if unreadable)\n- location: EXACTLY "Shelf N, X%" — shelf counted from top, X = horizontal % from left edge rounded to nearest 5%\nList books in order LEFT to RIGHT on each shelf. Include ALL books even if unclear.\nCRITICAL: ONE valid JSON object only. No markdown. No code fences. Start { end }. Double quotes. No trailing commas.\nFormat: {"shelves":[{"shelf":1,"books":[{"title":"Title","author":"Author","location":"Shelf 1, 25%","clarity":"clear"},{"title":"unclear","author":"unknown","location":"Shelf 1, 40%","clarity":"unclear"}]},{"shelf":2,"books":[]}]}';
+
+var PROMPT_VALUEFROMLIST = function(inventoryJSON) {
+  return 'You are an expert used book reseller. Below is a complete shelf inventory. Your job is to assess resale value for each book.\nFor each book that has market value of $5 or more, return a valuation entry. OMIT books under $5.\nFor each valued book provide: title, author, location (copy exactly from inventory), condition, condition_notes, market_price, quick_price, dealer_price, time_to_sell_market, time_to_sell_quick, priority (high/medium/skip), platform_tip, rationale.\nIncludes three prices: market_price (patient seller), quick_price (sell fast), dealer_price (wholesale 10-30% of market).\nCRITICAL: ONE valid JSON object only. No markdown. No code fences. Start { end }. Double quotes. No trailing commas.\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0"},"items":[{"id":1,"title":"Title","author":"Author","location":"Shelf 1, 25%","condition":"Good","condition_notes":"notes","market_price":"$10","quick_price":"$7","dealer_price":"$2","time_to_sell_market":"2-4 weeks","time_to_sell_quick":"3-7 days","priority":"medium","platform_tip":"eBay","rationale":"reason"}]}\n\nINVENTORY TO VALUE:\n' + inventoryJSON;
+};
+
 
 var PROMPT_MEMO = 'You are an expert sports memorabilia appraiser and reseller with deep knowledge of game programs, publications, tickets, scorecards, yearbooks, media guides, pennants, and paper ephemera from the 1900s to present. Analyze the uploaded image(s) and identify each item.\nFor each item assess: sport and team, event type (championship/playoff vs regular season), date/era, featured athletes or notable figures, any visible signatures, condition of cover/spine/interior, and scarcity.\nCRITICAL: Respond with ONE valid JSON object only. No markdown. No code fences. No text before or after. Start with { end with }. Double quotes only. No trailing commas.\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0","highlight":"most notable item"},"items":[{"id":1,"item_type":"Game Program","title":"1967 World Series Program - Cardinals vs Red Sox","sport":"Baseball","teams":"St. Louis Cardinals vs Boston Red Sox","event_type":"World Series Game 1","date_era":"October 1967","featured_players":"Bob Gibson, Carl Yastrzemski","signatures":"None visible","condition":"Very Good","condition_notes":"Cover bright, minor spine wear, no writing","market_price":"$85","quick_price":"$55","dealer_price":"$30","time_to_sell_market":"2-6 weeks","time_to_sell_quick":"5-10 days","priority":"high","platform_tip":"eBay, Heritage Auctions","rationale":"World Series programs from the 1960s command strong premiums especially Cardinals-Red Sox rivalry"}]}'
   + ' For each item provide three price points: market_price (patient private seller), quick_price (priced to sell within days), dealer_price (what a sports memorabilia dealer would pay wholesale — typically 30-50% of market value).';
@@ -998,6 +1031,179 @@ async function runOpenAI(apiKey, prompt) {
   return raw;
 }
 
+// ── TWO-PASS BOOK ANALYSIS ────────────────────────────
+async function analyzeTwoPass(selected, extraNotes) {
+  engineResults = {};
+
+  // ── PASS 1: INVENTORY ──────────────────────────────
+  setStatus('Pass 1 of 2 — inventorying all spines...', 'Running ' + selected.length + ' engine(s) in parallel');
+
+  var invPrompt = PROMPT_INVENTORY + '\n\nScan every spine and return the shelf inventory JSON.';
+  if (extraNotes) invPrompt += '\n\nSELLER NOTES: ' + extraNotes;
+
+  // Collect inventory from all engines in parallel
+  var inventories = {}; // eng -> parsed inventory result
+  var invTasks = selected.map(function(eng) {
+    return runEngine(eng, invPrompt)
+      .then(function(res) {
+        try { inventories[eng] = extractJSON(res.raw); }
+        catch(e) { inventories[eng] = null; }
+      })
+      .catch(function(e) { inventories[eng] = null; });
+  });
+  await Promise.all(invTasks);
+
+  // Merge inventories across engines into a master shelf list
+  var masterShelves = mergeInventories(inventories, selected);
+
+  // Show inventory results immediately
+  renderInventoryProgress(masterShelves, selected, inventories);
+
+  // ── PASS 2: VALUATION ──────────────────────────────
+  setStatus('Pass 2 of 2 — running valuations...', 'Using merged inventory as reference');
+
+  // Build valuation prompt from merged inventory
+  var invJSON = JSON.stringify(masterShelves);
+  var valPrompt = PROMPT_VALUEFROMLIST(invJSON);
+  valPrompt += '\n\nReturn valuations JSON. IMPORTANT: begin with { end with }.';
+
+  var valTasks = selected.map(function(eng) {
+    return runEngine(eng, valPrompt)
+      .then(function(res) {
+        try { engineResults[eng] = { result: extractJSON(res.raw), label: res.label, cls: res.cls, error: null }; }
+        catch(e) { engineResults[eng] = { result: null, label: res.label||eng, cls: 'fallback', error: 'Parse error: ' + e.message }; }
+      })
+      .catch(function(e) { engineResults[eng] = { result: null, label: eng, cls: 'fallback', error: e.message }; });
+  });
+  await Promise.all(valTasks);
+
+  // Render compare table (or single result)
+  if (selected.length === 1) {
+    var er = engineResults[selected[0]];
+    if (er && er.result) renderResults(er.result, { cls: er.cls, note: 'Analyzed with <strong>' + er.label + '</strong> — full inventory mode' });
+    else showError('Valuation failed: ' + (er ? er.error : 'unknown'));
+  } else {
+    renderCompareTable(selected);
+  }
+
+  // Append shelf index below results
+  setTimeout(function() { appendShelfIndex(masterShelves, engineResults, selected); }, 200);
+}
+
+function mergeInventories(inventories, selected) {
+  // Build a unified shelf list — union of all engines' findings
+  // Key by shelf number, then merge books by location similarity
+  var shelveMap = {};
+
+  selected.forEach(function(eng) {
+    var inv = inventories[eng];
+    if (!inv || !inv.shelves) return;
+    inv.shelves.forEach(function(shelf) {
+      var sn = shelf.shelf || 1;
+      if (!shelveMap[sn]) shelveMap[sn] = [];
+      (shelf.books || []).forEach(function(book) {
+        var pct = posNum(book.location || '');
+        // Check if already in master list (within 10%)
+        var existing = shelveMap[sn].find(function(b) {
+          var bp = posNum(b.location || '');
+          return bp !== -1 && pct !== -1 && Math.abs(bp - pct) <= 10;
+        });
+        if (existing) {
+          // Update with clearer title if this one is better
+          if (book.clarity === 'clear' && existing.clarity !== 'clear') {
+            existing.title = book.title; existing.author = book.author;
+            existing.clarity = 'clear'; existing.location = normalizeLocation(book.location);
+          }
+          existing.seenBy = (existing.seenBy || 1) + 1;
+        } else {
+          shelveMap[sn].push({
+            title: book.title || 'unclear',
+            author: book.author || 'unknown',
+            location: normalizeLocation(book.location || ''),
+            clarity: book.clarity || 'clear',
+            seenBy: 1
+          });
+        }
+      });
+    });
+  });
+
+  // Sort each shelf by position %
+  var result = [];
+  Object.keys(shelveMap).sort(function(a,b){return a-b;}).forEach(function(sn) {
+    var books = shelveMap[sn].sort(function(a,b) { return posNum(a.location) - posNum(b.location); });
+    result.push({ shelf: parseInt(sn), books: books });
+  });
+  return result;
+}
+
+function renderInventoryProgress(masterShelves, selected, inventories) {
+  var totalBooks = masterShelves.reduce(function(s,sh){ return s + sh.books.length; }, 0);
+  var engCounts = selected.map(function(eng) {
+    var inv = inventories[eng];
+    var n = inv && inv.shelves ? inv.shelves.reduce(function(s,sh){ return s + (sh.books||[]).length; }, 0) : 0;
+    return eng + ': ' + n;
+  }).join(' | ');
+
+  document.getElementById('results-area').innerHTML =
+    '<div class="model-banner best" style="margin-bottom:.5rem">Pass 1 complete — ' + totalBooks + ' books inventoried across ' + masterShelves.length + ' shelves (' + engCounts + '). Running valuations...</div>';
+}
+
+function appendShelfIndex(masterShelves, engineResults, selected) {
+  var resultsArea = document.getElementById('results-area');
+  if (!resultsArea) return;
+
+  // Get all valued titles from engine results
+  var valuedTitles = {};
+  selected.forEach(function(eng) {
+    var er = engineResults[eng];
+    if (!er || !er.result) return;
+    (er.result.items || []).forEach(function(item) {
+      var k = (item.title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+      if (k) valuedTitles[k] = true;
+    });
+  });
+
+  function isValued(title) {
+    var k = (title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+    var words = k.split(/\s+/).filter(function(w){ return w.length > 3; });
+    return words.some(function(w) {
+      return Object.keys(valuedTitles).some(function(vk){ return vk.includes(w); });
+    });
+  }
+
+  var html = '<div class="shelf-index">' +
+    '<div class="shelf-index-header"><span>Complete shelf inventory</span><span style="font-size:10px;opacity:.7">' +
+    masterShelves.reduce(function(s,sh){ return s+sh.books.length; }, 0) + ' books total — gold = above $5 threshold</span></div>';
+
+  masterShelves.forEach(function(shelf) {
+    html += '<div class="shelf-index-shelf">';
+    html += '<div class="shelf-label">Shelf ' + shelf.shelf + ' — ' + shelf.books.length + ' books</div>';
+    html += '<div class="shelf-books">';
+    shelf.books.forEach(function(book) {
+      var valued = isValued(book.title);
+      var unclear = book.clarity === 'unclear' || book.title === 'unclear';
+      var cls = unclear ? 'spine-tag unclear' : valued ? 'spine-tag valued' : 'spine-tag';
+      var pct = book.location ? book.location.replace(/^Shelf \d+,\s*/,'') : '';
+      html += '<span class="' + cls + '" title="' + (book.author||'') + ' | ' + book.location + '">' +
+        (pct ? '<span style="font-size:9px;opacity:.6">' + pct + '</span> ' : '') +
+        (book.title === 'unclear' ? '???' : book.title) + '</span>';
+    });
+    html += '</div></div>';
+  });
+
+  html += '</div>';
+
+  // Append after existing results
+  var existing = resultsArea.querySelector('.results, .compare-table-wrap');
+  if (existing) {
+    existing.insertAdjacentHTML('afterend', html);
+  } else {
+    resultsArea.innerHTML += html;
+  }
+}
+
+
 // ── ANALYZE ───────────────────────────────────────────
 async function runEngine(eng, prompt) {
   var key = getKey(eng);
@@ -1026,6 +1232,15 @@ async function analyze() {
   document.getElementById('analyze-btn').disabled = true;
 
   var extraNotes = document.getElementById('extra-notes').value.trim();
+
+  // Two-pass mode for books
+  if ((mode === 'books') && scanMode === 'full') {
+    await analyzeTwoPass(selected, extraNotes);
+    document.getElementById('analyze-btn').disabled = false;
+    updateBtn();
+    return;
+  }
+
   var prompt = mode === 'books' ? PROMPT_BOOKS : mode === 'coins' ? buildCoinPrompt() : mode === 'memo' ? PROMPT_MEMO : mode === 'glass' ? PROMPT_GLASS : PROMPT_ELEC;
   prompt += '\n\nAnalyze all items and return the JSON. IMPORTANT: Your response must begin with { and end with } with no other text.';
   if (extraNotes) {
@@ -1614,6 +1829,21 @@ function compareCheckAll(checked) {
     cb.dispatchEvent(new Event('change'));
   });
 }
+
+// ── SCAN MODE ─────────────────────────────────────────
+var scanMode = 'quick'; // 'quick' | 'full'
+
+function setScanMode(m) {
+  scanMode = m;
+  document.getElementById('scan-quick').classList.toggle('active', m === 'quick');
+  document.getElementById('scan-full').classList.toggle('active', m === 'full');
+  document.getElementById('scan-desc').textContent = m === 'quick'
+    ? 'Value items above $5 only'
+    : 'Inventory every spine first, then value — 2 API calls per engine';
+}
+
+// Show/hide scan mode row when mode changes
+var _origSetMode = setMode;
 
 function normalizeLocation(loc) {
   if (!loc) return loc;
