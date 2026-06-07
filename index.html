@@ -222,6 +222,21 @@
   .spine-tag { font-size:10px; font-family:"DM Mono",monospace; background:var(--paper); border:0.5px solid var(--border); border-radius:3px; padding:2px 5px; color:var(--ink-mid); white-space:nowrap; }
   .spine-tag.valued { border-color:var(--gold); color:var(--ink); background:var(--gold-bg); }
   .spine-tag.unclear { opacity:.5; font-style:italic; }
+  /* ── STITCH PANEL ── */
+  .stitch-panel { display:none; background:var(--paper); border:1px solid var(--gold); border-radius:var(--radius-lg); padding:10px 12px; margin-bottom:1rem; }
+  .stitch-panel.visible { display:block; }
+  .stitch-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .stitch-title { font-size:12px; font-weight:600; color:var(--ink); }
+  .stitch-hint { font-size:11px; color:var(--ink-light); margin-bottom:10px; line-height:1.5; }
+  .stitch-sliders { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  .stitch-row { display:grid; grid-template-columns:80px 1fr 36px; align-items:center; gap:8px; font-size:11px; color:var(--ink-mid); }
+  .stitch-row input[type=range] { width:100%; accent-color:var(--gold); height:3px; }
+  .stitch-preview-wrap { margin-bottom:10px; overflow-x:auto; background:var(--cream); border-radius:var(--radius); border:0.5px solid var(--border); }
+  .stitch-preview-wrap canvas { display:block; max-height:120px; width:auto; }
+  .stitch-actions { display:flex; gap:8px; }
+  .stitch-btn { font-family:"DM Mono",monospace; font-size:11px; padding:5px 12px; border-radius:var(--radius); border:1px solid var(--border-strong); background:transparent; cursor:pointer; color:var(--ink-mid); }
+  .stitch-btn.primary { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .stitch-btn:hover:not(.primary) { border-color:var(--ink); color:var(--ink); }
   /* ── SHEET EXPORT ── */
   .export-bar {
     position: sticky; bottom: 0; left: 0; right: 0;
@@ -444,6 +459,30 @@
 
   <div class="preview-grid" id="preview-grid"></div>
 
+  <div id="stitch-trigger-wrap" style="margin-bottom:.75rem;display:none">
+    <button id="stitch-trigger" onclick="openStitch()"
+      style="display:none;align-items:center;gap:6px;font-family:DM Mono,monospace;font-size:11px;padding:5px 14px;border:1px solid var(--gold);border-radius:var(--radius-lg);background:var(--gold-bg);color:#7A5C00;cursor:pointer">
+      🖼 Stitch images into panorama
+    </button>
+  </div>
+
+  <!-- STITCH PANEL -->
+  <div class="stitch-panel" id="stitch-panel">
+    <div class="stitch-header">
+      <span class="stitch-title">🖼 Stitch images into panorama</span>
+      <button class="stitch-btn" onclick="closeStitch()" style="font-size:11px;padding:2px 8px">✕ Close</button>
+    </div>
+    <div class="stitch-hint">Drag sliders to trim overlap from the <strong>right edge</strong> of each image before stitching. Set to 0% if photos don't overlap.</div>
+    <div class="stitch-sliders" id="stitch-sliders"></div>
+    <div class="stitch-preview-wrap" id="stitch-preview-wrap" style="display:none">
+      <canvas id="stitch-canvas"></canvas>
+    </div>
+    <div class="stitch-actions">
+      <button class="stitch-btn" onclick="previewStitch()">Preview stitch</button>
+      <button class="stitch-btn primary" id="apply-stitch-btn" onclick="applyStitch()" style="display:none">Use stitched image →</button>
+    </div>
+  </div>
+
   <div class="notes-wrap">
     <div class="notes-label">
       Additional details <span>Optional — anything the photos don't show</span>
@@ -665,6 +704,13 @@ function renderPreviews() {
   document.getElementById('upload-label').textContent = images.length > 0
     ? images.length + ' image' + (images.length > 1 ? 's' : '') + ' ready (' + totalLabel + ' total)'
     : 'Tap to take a photo or select images';
+  // Show stitch trigger for books/elec with 2+ images
+  var stitchable = images.length >= 2 && (mode === 'books' || mode === 'elec');
+  var stWrap = document.getElementById('stitch-trigger-wrap');
+  if (stWrap) stWrap.style.display = stitchable ? 'block' : 'none';
+  var stBtn = document.getElementById('stitch-trigger');
+  if (stBtn) stBtn.style.display = stitchable ? 'inline-flex' : 'none';
+  if (!stitchable) closeStitch();
   updateBtn();
 }
 
@@ -2099,6 +2145,136 @@ function normalizeLocation(loc) {
   // Snap any percentage to nearest 5
   return loc.replace(/(\d+)%/g, function(m, n) { return (Math.round(parseInt(n)/5)*5)+'%'; });
 }
+
+// ── IMAGE STITCHER ────────────────────────────────────
+var stitchTrimPct = []; // trim % for right edge of each image (0-50)
+
+function openStitch() {
+  var panel = document.getElementById('stitch-panel');
+  if (!panel) return;
+  panel.classList.add('visible');
+  panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  buildStitchSliders();
+}
+
+function closeStitch() {
+  var panel = document.getElementById('stitch-panel');
+  if (panel) panel.classList.remove('visible');
+  var wrap = document.getElementById('stitch-preview-wrap');
+  if (wrap) wrap.style.display = 'none';
+  var applyBtn = document.getElementById('apply-stitch-btn');
+  if (applyBtn) applyBtn.style.display = 'none';
+}
+
+function buildStitchSliders() {
+  var container = document.getElementById('stitch-sliders');
+  if (!container) return;
+  stitchTrimPct = images.map(function(){ return 0; });
+
+  // Last image has no right trim (it's the rightmost)
+  // Only images 1..N-1 get a trim slider
+  var html = '';
+  for (var i = 0; i < images.length - 1; i++) {
+    html += '<div class="stitch-row">' +
+      '<span>Photo ' + (i+1) + ' right:</span>' +
+      '<input type="range" min="0" max="50" value="0" step="1" data-idx="' + i + '" oninput="updateTrim(this)">' +
+      '<span id="trim-val-' + i + '">0%</span>' +
+      '</div>';
+  }
+  container.innerHTML = html || '<div style="font-size:11px;color:var(--ink-light)">Upload 2+ images to configure stitching.</div>';
+}
+
+function updateTrim(slider) {
+  var idx = parseInt(slider.dataset.idx);
+  stitchTrimPct[idx] = parseInt(slider.value);
+  var valEl = document.getElementById('trim-val-' + idx);
+  if (valEl) valEl.textContent = slider.value + '%';
+  // Auto-preview if canvas already shown
+  var wrap = document.getElementById('stitch-preview-wrap');
+  if (wrap && wrap.style.display !== 'none') previewStitch();
+}
+
+function previewStitch() {
+  if (images.length < 2) return;
+  // Load all images as Image objects
+  var loadedImgs = [];
+  var loaded = 0;
+  images.forEach(function(img, i) {
+    var el = new Image();
+    el.onload = function() {
+      loadedImgs[i] = el;
+      loaded++;
+      if (loaded === images.length) doStitch(loadedImgs, false);
+    };
+    el.src = img.src;
+  });
+}
+
+function doStitch(imgEls, apply) {
+  // Calculate widths after trimming right edge of each image except last
+  var targetH = Math.min.apply(null, imgEls.map(function(el){ return el.naturalHeight; }));
+  var segments = imgEls.map(function(el, i) {
+    var trimFrac = (stitchTrimPct[i] || 0) / 100;
+    var usedW = Math.round(el.naturalWidth * (1 - trimFrac));
+    // Scale to target height
+    var scale = targetH / el.naturalHeight;
+    return { el: el, srcW: usedW, drawW: Math.round(usedW * scale), drawH: targetH, scale: scale };
+  });
+  var totalW = segments.reduce(function(s, seg){ return s + seg.drawW; }, 0);
+
+  var canvas = document.getElementById('stitch-canvas');
+  canvas.width = totalW;
+  canvas.height = targetH;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#F5F0E8';
+  ctx.fillRect(0, 0, totalW, targetH);
+
+  var x = 0;
+  segments.forEach(function(seg, i) {
+    // Draw seam line between photos
+    if (i > 0) {
+      ctx.strokeStyle = 'rgba(184,134,11,0.5)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, targetH); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.drawImage(seg.el, 0, 0, seg.srcW, seg.el.naturalHeight, x, 0, seg.drawW, seg.drawH);
+    x += seg.drawW;
+  });
+
+  if (apply) {
+    // Export canvas to JPEG and replace images array
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    images = [{ src: dataUrl, type: 'image/jpeg' }];
+    renderPreviews();
+    closeStitch();
+    showToast('Stitched into 1 panoramic image — ready to analyze');
+  } else {
+    // Just show preview
+    var wrap = document.getElementById('stitch-preview-wrap');
+    wrap.style.display = 'block';
+    var applyBtn = document.getElementById('apply-stitch-btn');
+    applyBtn.style.display = 'inline-block';
+    wrap.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
+function applyStitch() {
+  if (images.length < 2) return;
+  var loadedImgs = [];
+  var loaded = 0;
+  images.forEach(function(img, i) {
+    var el = new Image();
+    el.onload = function() {
+      loadedImgs[i] = el;
+      loaded++;
+      if (loaded === images.length) doStitch(loadedImgs, true);
+    };
+    el.src = img.src;
+  });
+}
+
 
 // ── SHEET EXPORT ──────────────────────────────────────
 var selectedItems = {};
