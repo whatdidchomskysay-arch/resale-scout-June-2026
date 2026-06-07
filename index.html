@@ -1090,118 +1090,367 @@ async function analyzeTwoPass(selected, extraNotes) {
   setTimeout(function() { appendShelfIndex(masterShelves, engineResults, selected); }, 200);
 }
 
-function mergeInventories(inventories, selected) {
-  // Build a unified shelf list — union of all engines' findings
-  // Key by shelf number, then merge books by location similarity
-  var shelveMap = {};
 
+// ── SEQUENCE ALIGNMENT ────────────────────────────────
+// Merges per-engine book lists using position as ground truth.
+// Each shelf row in the output represents ONE physical book position.
+// Engines that missed a book show a gap (null) in that row.
+
+function mergeInventories(inventories, selected) {
+  // Per shelf, each engine has an ORDERED list of books it could see.
+  // Books are always reported left-to-right, so the lists are already in
+  // the correct physical sequence — we just need to merge them like
+  // sorted lists, inserting gaps where an engine skips a book.
+  //
+  // Algorithm: multi-way sequence merge (generalised LCS).
+  // We walk all engine lists simultaneously. At each step we look at the
+  // next unplaced book from each engine. If the same book appears at the
+  // front of 2+ lists (title similarity >= 0.45) we advance all those
+  // lists together and emit a single merged row. If only one engine has
+  // a particular book next (before any other engine shows a matching
+  // title), we emit a row for it and advance only that engine's pointer.
+
+  function titleWords(t) {
+    return (t||'unclear').toLowerCase().replace(/[^a-z0-9]/g,' ')
+      .split(/\s+/).filter(function(w){ return w.length > 2; });
+  }
+  function titleSim(a, b) {
+    var wa = titleWords(a), wb = titleWords(b);
+    if (!wa.length || !wb.length) return 0;
+    var hits = wa.filter(function(w){ return wb.indexOf(w) !== -1; }).length;
+    return hits / Math.max(wa.length, wb.length);
+  }
+  function bestTitle(books) {
+    // Pick clearest/longest title from a set of engine readings
+    return books.reduce(function(best, b) {
+      if (!best) return b;
+      if (b.clarity === 'clear' && best.clarity !== 'clear') return b;
+      if (b.clarity === best.clarity && (b.title||'').length > (best.title||'').length) return b;
+      return best;
+    }, null);
+  }
+
+  // Collect per-shelf, per-engine ordered arrays
+  var shelfEngBooks = {}; // shelfNum -> {eng -> [{title,author,location,clarity}]}
+  var allShelves = {};
   selected.forEach(function(eng) {
     var inv = inventories[eng];
     if (!inv || !inv.shelves) return;
     inv.shelves.forEach(function(shelf) {
       var sn = shelf.shelf || 1;
-      if (!shelveMap[sn]) shelveMap[sn] = [];
-      (shelf.books || []).forEach(function(book) {
-        var pct = posNum(book.location || '');
-        // Check if already in master list (within 10%)
-        var existing = shelveMap[sn].find(function(b) {
-          var bp = posNum(b.location || '');
-          return bp !== -1 && pct !== -1 && Math.abs(bp - pct) <= 10;
-        });
-        if (existing) {
-          // Update with clearer title if this one is better
-          if (book.clarity === 'clear' && existing.clarity !== 'clear') {
-            existing.title = book.title; existing.author = book.author;
-            existing.clarity = 'clear'; existing.location = normalizeLocation(book.location);
-          }
-          existing.seenBy = (existing.seenBy || 1) + 1;
-        } else {
-          shelveMap[sn].push({
-            title: book.title || 'unclear',
-            author: book.author || 'unknown',
-            location: normalizeLocation(book.location || ''),
-            clarity: book.clarity || 'clear',
-            seenBy: 1
-          });
-        }
+      allShelves[sn] = true;
+      if (!shelfEngBooks[sn]) shelfEngBooks[sn] = {};
+      shelfEngBooks[sn][eng] = (shelf.books || []).map(function(b) {
+        return {
+          title: b.title || 'unclear',
+          author: b.author || 'unknown',
+          location: normalizeLocation(b.location || ''),
+          clarity: b.clarity || 'clear'
+        };
       });
+      // Already in order from the model — do not sort
     });
   });
 
-  // Sort each shelf by position %
   var result = [];
-  Object.keys(shelveMap).sort(function(a,b){return a-b;}).forEach(function(sn) {
-    var books = shelveMap[sn].sort(function(a,b) { return posNum(a.location) - posNum(b.location); });
-    result.push({ shelf: parseInt(sn), books: books });
+  Object.keys(allShelves).sort(function(a,b){return +a-b;}).forEach(function(snStr) {
+    var sn = +snStr;
+    var engBooks = shelfEngBooks[sn] || {};
+
+    // Pointers for each engine
+    var ptrs = {};
+    selected.forEach(function(eng) { ptrs[eng] = 0; });
+
+    function remaining(eng) {
+      return (engBooks[eng] || []).length - ptrs[eng];
+    }
+    function peek(eng) {
+      var list = engBooks[eng];
+      if (!list || ptrs[eng] >= list.length) return null;
+      return list[ptrs[eng]];
+    }
+
+    var rows = [];
+    var MAX_ITER = 500; // safety cap
+    var iter = 0;
+
+    while (iter++ < MAX_ITER) {
+      // Check if all engines exhausted
+      var anyLeft = selected.some(function(eng){ return peek(eng) !== null; });
+      if (!anyLeft) break;
+
+      // For each engine that still has books, look at its next book.
+      // Find a "consensus" group: engines whose next book matches
+      // each other within similarity threshold 0.45.
+      // Strategy: take the first non-null front book as the anchor,
+      // then see which other engines' front book matches it.
+      // Engines that DON'T match (their next book is clearly different)
+      // get a gap inserted — UNLESS they're exhausted.
+
+      // Find anchor: the engine with the most-clear/longest next book
+      var anchor = null;
+      selected.forEach(function(eng) {
+        var b = peek(eng);
+        if (!b) return;
+        if (!anchor || (b.clarity === 'clear' && (anchor.clarity !== 'clear' ||
+          (b.title||'').length > (anchor.title||'').length))) {
+          anchor = b;
+        }
+      });
+      if (!anchor) break;
+
+      // Which engines agree this is the next book?
+      var SIM_THRESH = 0.4;
+      var agreeEngs = [];
+      var disagreeEngs = [];
+      selected.forEach(function(eng) {
+        var b = peek(eng);
+        if (!b) return; // exhausted — don't include in either group
+        var sim = titleSim(anchor.title, b.title);
+        // Also treat unclear/unclear as a match (both unclear = same gap)
+        var bothUnclear = anchor.title === 'unclear' && b.title === 'unclear';
+        if (sim >= SIM_THRESH || bothUnclear || b === anchor) {
+          agreeEngs.push(eng);
+        } else {
+          disagreeEngs.push(eng);
+        }
+      });
+
+      // Check: is the "disagreeing" engine actually just missing this book?
+      // If anchor appears in the disagreeing engine's NEAR future (within 3 books),
+      // then the disagreeing engine missed this slot — give it a gap.
+      // Otherwise the disagreeing engine has a genuinely different book here.
+      var gapEngs = [];
+      var advanceEngs = agreeEngs.slice();
+
+      disagreeEngs.forEach(function(eng) {
+        var list = engBooks[eng] || [];
+        var ptr = ptrs[eng];
+        var foundAhead = false;
+        for (var ahead = 1; ahead <= 3 && ptr + ahead < list.length; ahead++) {
+          if (titleSim(anchor.title, list[ptr + ahead].title) >= SIM_THRESH) {
+            foundAhead = true; break;
+          }
+        }
+        if (foundAhead) {
+          // This engine sees this book a couple ahead — it missed the current slot
+          gapEngs.push(eng);
+        } else {
+          // This engine has a genuinely different book here — it also gets advanced
+          // but we treat it as a separate book only if no agree engines exist,
+          // otherwise we emit the agree group first and leave this engine for next round
+          // (do nothing — it stays at its current pointer)
+        }
+      });
+
+      // Build the row
+      var rowEngines = {};
+      var allRowBooks = [];
+      advanceEngs.forEach(function(eng) {
+        var b = peek(eng);
+        if (b) { rowEngines[eng] = b; allRowBooks.push(b); ptrs[eng]++; }
+      });
+      // gap engines: record null (missed) but don't advance pointer
+      gapEngs.forEach(function(eng) { rowEngines[eng] = null; });
+
+      if (allRowBooks.length === 0) {
+        // Stuck — force-advance the engine with fewest remaining
+        var minEng = selected.reduce(function(a, b) {
+          return remaining(a) <= remaining(b) ? a : b;
+        });
+        if (peek(minEng)) { ptrs[minEng]++; }
+        continue;
+      }
+
+      var canon = bestTitle(allRowBooks);
+      rows.push({
+        seq: rows.length + 1,
+        title: canon ? canon.title : 'unclear',
+        author: canon ? canon.author : 'unknown',
+        location: canon ? canon.location : '',
+        clarity: canon ? canon.clarity : 'unclear',
+        seenBy: advanceEngs.length,
+        seenByAll: advanceEngs.length === selected.filter(function(e){ return (engBooks[e]||[]).length > 0; }).length,
+        perEngine: rowEngines
+      });
+    }
+
+    result.push({ shelf: sn, books: rows });
   });
   return result;
 }
 
 function renderInventoryProgress(masterShelves, selected, inventories) {
-  var totalBooks = masterShelves.reduce(function(s,sh){ return s + sh.books.length; }, 0);
+  var totalSlots = masterShelves.reduce(function(s,sh){ return s + sh.books.length; }, 0);
   var engCounts = selected.map(function(eng) {
     var inv = inventories[eng];
     var n = inv && inv.shelves ? inv.shelves.reduce(function(s,sh){ return s + (sh.books||[]).length; }, 0) : 0;
     return eng + ': ' + n;
-  }).join(' | ');
+  }).join(' &nbsp;|&nbsp; ');
 
   document.getElementById('results-area').innerHTML =
-    '<div class="model-banner best" style="margin-bottom:.5rem">Pass 1 complete — ' + totalBooks + ' books inventoried across ' + masterShelves.length + ' shelves (' + engCounts + '). Running valuations...</div>';
+    '<div class="model-banner best" style="margin-bottom:.5rem">Pass 1 complete — ' +
+    totalSlots + ' book positions across ' + masterShelves.length + ' shelf(ves). ' +
+    'Per engine: ' + engCounts + '. Running valuations...</div>';
 }
 
-function appendShelfIndex(masterShelves, engineResults, selected) {
-  var resultsArea = document.getElementById('results-area');
-  if (!resultsArea) return;
-
-  // Get all valued titles from engine results
+function buildShelfIndexHTML(masterShelves, engineResults, selected, standalone) {
+  // Build valued-title lookup
   var valuedTitles = {};
   selected.forEach(function(eng) {
     var er = engineResults[eng];
     if (!er || !er.result) return;
     (er.result.items || []).forEach(function(item) {
-      var k = (item.title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
-      if (k) valuedTitles[k] = true;
+      (item.title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').split(/\s+/)
+        .filter(function(w){ return w.length > 3; })
+        .forEach(function(w){ valuedTitles[w] = true; });
     });
   });
 
   function isValued(title) {
-    var k = (title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
-    var words = k.split(/\s+/).filter(function(w){ return w.length > 3; });
-    return words.some(function(w) {
-      return Object.keys(valuedTitles).some(function(vk){ return vk.includes(w); });
-    });
+    return (title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').split(/\s+/)
+      .filter(function(w){ return w.length > 3; })
+      .some(function(w){ return valuedTitles[w]; });
   }
 
-  var html = '<div class="shelf-index">' +
-    '<div class="shelf-index-header"><span>Complete shelf inventory</span><span style="font-size:10px;opacity:.7">' +
-    masterShelves.reduce(function(s,sh){ return s+sh.books.length; }, 0) + ' books total — gold = above $5 threshold</span></div>';
+  var totalBooks = masterShelves.reduce(function(s,sh){ return s + sh.books.length; }, 0);
+  var seenByAll  = masterShelves.reduce(function(s,sh){
+    return s + sh.books.filter(function(b){ return b.seenByAll; }).length; }, 0);
+  var multiEng = selected.length > 1;
+  var engColors = { gemini:'#4285F4', claude:'#6B46C1', grok:'#111', openai:'#2E7D32' };
 
+  var rows = '';
   masterShelves.forEach(function(shelf) {
-    html += '<div class="shelf-index-shelf">';
-    html += '<div class="shelf-label">Shelf ' + shelf.shelf + ' — ' + shelf.books.length + ' books</div>';
-    html += '<div class="shelf-books">';
+    // Shelf header spanning all columns
+    var colspan = multiEng ? (3 + selected.length) : 3;
+    rows += '<tr style="background:#2D2926;color:#FAF7F2">' +
+      '<td colspan="' + colspan + '" style="padding:5px 8px;font-size:11px;font-weight:600;' +
+      'letter-spacing:.5px;text-transform:uppercase">' +
+      'Shelf ' + shelf.shelf + ' &mdash; ' + shelf.books.length + ' books</td></tr>';
+
     shelf.books.forEach(function(book) {
-      var valued = isValued(book.title);
+      var valued  = isValued(book.title);
       var unclear = book.clarity === 'unclear' || book.title === 'unclear';
-      var cls = unclear ? 'spine-tag unclear' : valued ? 'spine-tag valued' : 'spine-tag';
-      var pct = book.location ? book.location.replace(/^Shelf \d+,\s*/,'') : '';
-      html += '<span class="' + cls + '" title="' + (book.author||'') + ' | ' + book.location + '">' +
-        (pct ? '<span style="font-size:9px;opacity:.6">' + pct + '</span> ' : '') +
-        (book.title === 'unclear' ? '???' : book.title) + '</span>';
+      var missedByAny = !book.seenByAll;
+      var rowBg = valued ? '#FFFBEA' : missedByAny ? '#FFF3F3' : (book.seq % 2 === 0 ? '#FAF7F2' : '#FFFFFF');
+
+      rows += '<tr style="background:' + rowBg + ';border-bottom:0.5px solid #e0ddd8">';
+      // Seq #
+      rows += '<td style="padding:3px 6px;font-family:monospace;font-size:10px;color:#8A837A;' +
+        'white-space:nowrap;border-right:0.5px solid #e0ddd8">' + book.seq + '</td>';
+      // Title
+      var tColor = valued ? '#1A1714' : unclear ? '#C8C0B8' : '#4A4540';
+      var tWeight = valued ? '600' : '400';
+      rows += '<td style="padding:3px 8px;font-size:12px;color:' + tColor + ';font-weight:' + tWeight + '">' +
+        (book.title === 'unclear' ? '<em style="color:#C8C0B8">unreadable</em>' : book.title) +
+        (valued ? ' <span style="font-size:9px;background:#F5E6A3;color:#7A5C00;padding:1px 4px;border-radius:3px;font-weight:500">$</span>' : '') +
+        '</td>';
+      // Author
+      rows += '<td style="padding:3px 8px;font-size:11px;color:#8A837A">' +
+        (book.author && book.author !== 'unknown' ? book.author : '') + '</td>';
+
+      if (multiEng) {
+        selected.forEach(function(eng) {
+          var engBook = book.perEngine[eng];
+          var borderColor = engColors[eng] || '#ccc';
+          rows += '<td style="padding:3px 6px;font-size:10px;border-left:2px solid ' + borderColor + ';vertical-align:top">';
+          if (!engBook) {
+            rows += '<span style="color:#D85A30;font-style:italic">—</span>';
+          } else if (engBook.title === 'unclear') {
+            rows += '<span style="color:#C8C0B8;font-style:italic">?</span>';
+          } else {
+            rows += '<span style="color:#4A4540">' + engBook.title + '</span>';
+          }
+          rows += '</td>';
+        });
+      }
+      rows += '</tr>';
     });
-    html += '</div></div>';
   });
 
-  html += '</div>';
+  // Build header row
+  var headerCols = '<th style="padding:4px 6px;text-align:left;background:#1A1714;color:#FAF7F2;' +
+    'font-size:10px;font-weight:500;width:32px">#</th>' +
+    '<th style="padding:4px 8px;text-align:left;background:#1A1714;color:#FAF7F2;font-size:10px;font-weight:500">Title</th>' +
+    '<th style="padding:4px 8px;text-align:left;background:#1A1714;color:#FAF7F2;font-size:10px;font-weight:500">Author</th>';
+  if (multiEng) {
+    selected.forEach(function(eng) {
+      var bc = engColors[eng] || '#888';
+      headerCols += '<th style="padding:4px 6px;text-align:left;background:#1A1714;color:#FAF7F2;' +
+        'font-size:10px;font-weight:500;border-left:2px solid ' + bc + '">' + eng + '</th>';
+    });
+  }
 
-  // Append after existing results
-  var existing = resultsArea.querySelector('.results, .compare-table-wrap');
-  if (existing) {
-    existing.insertAdjacentHTML('afterend', html);
+  var dateStr = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+
+  if (standalone) {
+    // Full HTML page for new tab
+    return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>Shelf Inventory — Resale Scout</title>' +
+      '<style>' +
+      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:0;background:#F5F0E8;color:#1A1714}' +
+      '.top-bar{background:#1A1714;color:#FAF7F2;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}' +
+      '.top-bar h1{font-size:16px;font-weight:500;margin:0}' +
+      '.top-bar .meta{font-size:11px;opacity:.6}' +
+      '.btn{font-family:inherit;font-size:12px;padding:5px 14px;background:#B8860B;color:#FAF7F2;border:none;border-radius:4px;cursor:pointer}' +
+      '.btn:hover{background:#9A7009}' +
+      '.legend{display:flex;gap:16px;padding:8px 16px;background:#FAF7F2;border-bottom:1px solid #e0ddd8;font-size:11px;color:#4A4540;flex-wrap:wrap}' +
+      '.leg{display:flex;align-items:center;gap:5px}' +
+      '.leg-sq{width:12px;height:12px;border-radius:2px;flex-shrink:0}' +
+      'table{width:100%;border-collapse:collapse}' +
+      'th,td{text-align:left}' +
+      '@media print{.top-bar .btn{display:none}.top-bar{position:static}}' +
+      '</style></head><body>' +
+      '<div class="top-bar">' +
+      '<h1>Shelf Inventory &mdash; Resale Scout</h1>' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+      '<span class="meta">' + dateStr + ' &nbsp;|&nbsp; ' + totalBooks + ' books &nbsp;|&nbsp; ' + seenByAll + ' agreed by all</span>' +
+      '<button class="btn" onclick="copyAll()">Copy all</button>' +
+      '<button class="btn" onclick="window.print()">Print</button>' +
+      '</div></div>' +
+      '<div class="legend">' +
+      '<div class="leg"><div class="leg-sq" style="background:#FFFBEA;border:1px solid #B8860B"></div>Above $5 threshold <span style="font-size:9px;background:#F5E6A3;color:#7A5C00;padding:1px 4px;border-radius:3px;margin-left:2px">$</span></div>' +
+      '<div class="leg"><div class="leg-sq" style="background:#FFF3F3;border:1px solid #F09595"></div>Missed by at least one engine</div>' +
+      (multiEng ? selected.map(function(e){ var c=engColors[e]||'#888'; return '<div class="leg"><div style="width:12px;height:12px;border-left:3px solid '+c+';flex-shrink:0"></div>'+e+'</div>'; }).join('') : '') +
+      '<div class="leg"><em style="color:#C8C0B8">—</em>&nbsp;engine missed this book</div>' +
+      '</div>' +
+      '<table><thead><tr>' + headerCols + '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<script>function copyAll(){var lines=[];document.querySelectorAll("tbody tr").forEach(function(r){var cells=r.querySelectorAll("td");if(cells.length<2)return;var seq=cells[0].textContent.trim();var title=cells[1].textContent.replace("$","").trim();var author=cells[2]?cells[2].textContent.trim():"";if(title)lines.push(seq+" "+title+(author?" — "+author:""));});navigator.clipboard.writeText(lines.join("\n")).then(function(){alert(lines.length+" books copied to clipboard");});}}<\/script>' +
+      '</body></html>';
   } else {
-    resultsArea.innerHTML += html;
+    // Inline fragment (not used for new-tab mode but kept for fallback)
+    return '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      '<thead><tr>' + headerCols + '</tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
   }
 }
+
+function appendShelfIndex(masterShelves, engineResults, selected) {
+  var pageHTML = buildShelfIndexHTML(masterShelves, engineResults, selected, true);
+
+  // Open in new tab
+  var tab = window.open('', '_blank');
+  if (tab) {
+    tab.document.open();
+    tab.document.write(pageHTML);
+    tab.document.close();
+  } else {
+    // Popup blocked — show a button in the results area instead
+    showError('Pop-up blocked. <button onclick="openShelfTab()" style="margin-left:8px;padding:4px 10px;background:var(--ink);color:var(--paper);border:none;border-radius:4px;cursor:pointer;font-size:12px">Open shelf index</button>');
+    window._lastShelfHTML = pageHTML;
+  }
+}
+
+function openShelfTab() {
+  var tab = window.open('', '_blank');
+  if (tab && window._lastShelfHTML) {
+    tab.document.open();
+    tab.document.write(window._lastShelfHTML);
+    tab.document.close();
+  }
+}
+
 
 
 // ── ANALYZE ───────────────────────────────────────────
