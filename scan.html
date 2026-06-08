@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1A1714">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Resale Scout — Scan ISBN</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.3/zxing.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+     background:#1A1714;color:#FAF7F2;min-height:100vh;
+     display:flex;flex-direction:column;overflow:hidden}
+
+.header{background:#2D2926;padding:12px 16px;display:flex;align-items:center;
+        justify-content:space-between;border-bottom:1px solid #3D3530;flex-shrink:0}
+.header h1{font-size:15px;font-weight:500}
+.row-badge{font-size:11px;background:#B8860B;color:#1A1714;
+           padding:3px 10px;border-radius:10px;font-weight:700}
+
+/* ── VIEWFINDER ── */
+.scanner-wrap{position:relative;background:#000;flex-shrink:0;
+              width:100%;max-height:58vh;overflow:hidden}
+#video{width:100%;height:100%;object-fit:cover;display:block}
+
+.aim-overlay{position:absolute;inset:0;display:flex;
+             align-items:center;justify-content:center;pointer-events:none}
+.aim-box{position:relative;width:80%;max-width:300px;aspect-ratio:2.5/1;
+         border:2px solid rgba(184,134,11,.6);border-radius:6px}
+.corner{position:absolute;width:18px;height:18px;border-color:#FAF7F2;border-style:solid}
+.tl{top:-1px;left:-1px;border-width:3px 0 0 3px;border-radius:2px 0 0 0}
+.tr{top:-1px;right:-1px;border-width:3px 3px 0 0;border-radius:0 2px 0 0}
+.bl{bottom:-1px;left:-1px;border-width:0 0 3px 3px;border-radius:0 0 0 2px}
+.br{bottom:-1px;right:-1px;border-width:0 3px 3px 0;border-radius:0 0 2px 0}
+.scan-line{position:absolute;left:0;right:0;height:2px;
+           background:linear-gradient(90deg,transparent,#B8860B,transparent);
+           animation:scanline 2s ease-in-out infinite}
+@keyframes scanline{0%,100%{top:5%}50%{top:92%}}
+.aim-label{position:absolute;bottom:-24px;left:0;right:0;text-align:center;
+           font-size:11px;color:#B8860B;font-weight:500;letter-spacing:.3px}
+
+/* ── BODY ── */
+.body{flex:1;padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+
+.status{text-align:center;padding:8px 12px;font-size:13px;
+        color:#8A837A;min-height:34px;border-radius:6px;line-height:1.4}
+.status.scanning{color:#B8860B;font-weight:500}
+.status.success{background:#1A3A2A;color:#4ADE80;font-weight:600}
+.status.error{background:#3A1A1A;color:#F87171}
+
+.result-card{background:#2D2926;border-radius:10px;padding:14px;display:none}
+.result-isbn{font-family:monospace;font-size:19px;color:#B8860B;
+             letter-spacing:2px;margin-bottom:10px;word-break:break-all}
+.result-book{font-size:14px;font-weight:600;line-height:1.3;margin-bottom:3px}
+.result-meta{font-size:12px;color:#8A837A;line-height:1.5}
+.confirmed-badge{display:inline-block;margin-top:8px;background:#1A3A2A;
+                 color:#4ADE80;font-size:11px;padding:3px 10px;
+                 border-radius:10px;font-weight:500}
+
+.btn{width:100%;padding:13px;border:none;border-radius:10px;
+     font-size:15px;font-weight:600;cursor:pointer;
+     -webkit-tap-highlight-color:transparent;transition:opacity .15s}
+.btn:active{opacity:.75}
+.btn-scan{background:#B8860B;color:#1A1714}
+.btn-rescan{background:#2D2926;color:#8A837A;border:1px solid #3D3530;font-size:13px}
+
+.manual{margin-top:2px}
+.manual-label{font-size:11px;color:#4A4540;margin-bottom:6px;text-align:center}
+.manual-row{display:flex;gap:8px}
+.manual-input{flex:1;padding:11px 12px;background:#2D2926;color:#FAF7F2;
+              border:1px solid #3D3530;border-radius:8px;font-size:16px;
+              font-family:monospace;letter-spacing:1px;outline:none;
+              -webkit-appearance:none}
+.manual-input:focus{border-color:#B8860B}
+.manual-btn{padding:11px 16px;background:#4A4540;color:#FAF7F2;
+            border:none;border-radius:8px;font-size:14px;cursor:pointer}
+
+.spinner{display:inline-block;width:14px;height:14px;
+         border:2px solid #3D3530;border-top-color:#B8860B;
+         border-radius:50%;animation:spin .7s linear infinite;
+         vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.no-camera-msg{display:none;text-align:center;padding:20px;
+               color:#4A4540;font-size:13px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📷 Scan ISBN Barcode</h1>
+  <span class="row-badge" id="row-badge">Row ?</span>
+</div>
+
+<div class="scanner-wrap" id="scanner-wrap">
+  <video id="video" autoplay muted playsinline webkit-playsinline></video>
+  <div class="aim-overlay">
+    <div class="aim-box">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <div class="scan-line"></div>
+      <div class="aim-label">Align barcode here</div>
+    </div>
+  </div>
+  <div class="no-camera-msg" id="no-camera-msg">
+    Camera not available.<br>Use manual entry below.
+  </div>
+</div>
+
+<div class="body">
+  <div class="status scanning" id="status">Starting camera...</div>
+
+  <div class="result-card" id="result-card">
+    <div class="result-isbn" id="result-isbn"></div>
+    <div class="result-book" id="result-book"></div>
+    <div class="result-meta" id="result-meta"></div>
+    <div class="confirmed-badge" id="confirmed-badge" style="display:none">
+      ✓ Saved to Google Sheet
+    </div>
+  </div>
+
+  <button class="btn btn-rescan" id="rescan-btn" onclick="startScanner()" style="display:none">
+    Scan another barcode
+  </button>
+
+  <div class="manual">
+    <div class="manual-label">— or type ISBN manually —</div>
+    <div class="manual-row">
+      <input type="text" id="manual-input" class="manual-input"
+             placeholder="9780000000000" inputmode="numeric" maxlength="17"
+             onkeydown="if(event.key==='Enter') manualSubmit()">
+      <button class="manual-btn" onclick="manualSubmit()">Go</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG FROM URL PARAMS ─────────────────────────
+var params = new URLSearchParams(window.location.search);
+var ROW         = params.get('row')   || '?';
+var SHEET       = params.get('sheet') || 'Books';
+var SCRIPT_URL  = params.get('script') || '';
+
+document.getElementById('row-badge').textContent = 'Row ' + ROW;
+
+// ── STATE ──────────────────────────────────────────
+var codeReader = null;
+var scanning   = false;
+var videoStream = null;
+
+// ── STATUS HELPERS ─────────────────────────────────
+function setStatus(html, cls) {
+  var el = document.getElementById('status');
+  el.innerHTML = html;
+  el.className = 'status ' + (cls || 'scanning');
+}
+
+function spinner() {
+  return '<span class="spinner"></span>';
+}
+
+// ── CAMERA ─────────────────────────────────────────
+async function startScanner() {
+  document.getElementById('result-card').style.display  = 'none';
+  document.getElementById('rescan-btn').style.display   = 'none';
+  document.getElementById('confirmed-badge').style.display = 'none';
+  setStatus('Starting camera...', 'scanning');
+  scanning = true;
+
+  // Stop any existing stream
+  if (videoStream) {
+    videoStream.getTracks().forEach(function(t){ t.stop(); });
+    videoStream = null;
+  }
+
+  try {
+    // Request back camera directly — most reliable on Android Chrome
+    var constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    };
+
+    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    var video = document.getElementById('video');
+    video.srcObject = videoStream;
+    await video.play();
+
+    setStatus('Point barcode at the box — scanning automatically', 'scanning');
+    runZXing(video);
+
+  } catch(err) {
+    scanning = false;
+    if (err.name === 'NotAllowedError') {
+      setStatus('Camera permission denied. Allow camera in Chrome settings, or use manual entry below.', 'error');
+    } else if (err.name === 'NotFoundError') {
+      setStatus('No camera found. Use manual entry below.', 'error');
+    } else {
+      setStatus('Camera error: ' + err.message, 'error');
+    }
+    document.getElementById('no-camera-msg').style.display = 'block';
+  }
+}
+
+function runZXing(video) {
+  if (!scanning) return;
+  try {
+    if (codeReader) { try { codeReader.reset(); } catch(e) {} }
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader(null, {
+      delayBetweenScanAttempts: 100
+    });
+    codeReader.decodeFromVideoElement(video, function(result, err) {
+      if (!scanning) return;
+      if (result && result.getText) {
+        var raw = result.getText();
+        var isbn = raw.replace(/[^0-9X]/gi, '');
+        // Only accept ISBN-10 or ISBN-13
+        if (isbn.length === 10 || isbn.length === 13) {
+          scanning = false;
+          try { codeReader.reset(); } catch(e) {}
+          if (videoStream) { videoStream.getTracks().forEach(function(t){ t.stop(); }); }
+          onFound(isbn);
+        }
+      }
+    });
+  } catch(e) {
+    setStatus('Scanner error: ' + e.message + '. Use manual entry.', 'error');
+  }
+}
+
+function onFound(isbn) {
+  setStatus('✓ Barcode detected!', 'success');
+  document.getElementById('result-isbn').textContent = isbn;
+  document.getElementById('result-book').textContent = '';
+  document.getElementById('result-meta').textContent = '';
+  document.getElementById('result-card').style.display = 'block';
+
+  // Small vibration feedback on Android
+  if (navigator.vibrate) navigator.vibrate(80);
+
+  submitToSheet(isbn);
+}
+
+// ── MANUAL ENTRY ───────────────────────────────────
+function manualSubmit() {
+  var val = document.getElementById('manual-input').value.replace(/[^0-9X]/gi,'').trim();
+  if (val.length < 9) {
+    setStatus('Enter a valid 10 or 13 digit ISBN.', 'error'); return;
+  }
+  scanning = false;
+  if (codeReader) { try { codeReader.reset(); } catch(e) {} }
+  if (videoStream) { videoStream.getTracks().forEach(function(t){ t.stop(); }); }
+  document.getElementById('result-isbn').textContent = val;
+  document.getElementById('result-book').textContent = '';
+  document.getElementById('result-meta').textContent = '';
+  document.getElementById('result-card').style.display = 'block';
+  submitToSheet(val);
+}
+
+// ── SUBMIT TO APPS SCRIPT ──────────────────────────
+async function submitToSheet(isbn) {
+  if (!SCRIPT_URL) {
+    setStatus('No Apps Script URL configured. ISBN: ' + isbn, 'error');
+    document.getElementById('rescan-btn').style.display = 'block';
+    return;
+  }
+
+  setStatus(spinner() + 'Looking up book data...', 'scanning');
+
+  try {
+    var url = SCRIPT_URL
+      + '?action=writeIsbn'
+      + '&row=' + encodeURIComponent(ROW)
+      + '&sheet=' + encodeURIComponent(SHEET)
+      + '&isbn=' + encodeURIComponent(isbn);
+
+    var resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: ''
+    });
+    var result = await resp.json();
+
+    if (result.success) {
+      var book = result.book;
+      if (book && book.title) {
+        document.getElementById('result-book').textContent = book.title;
+        document.getElementById('result-meta').textContent =
+          [book.author, book.year, book.pages ? book.pages + ' pages' : '']
+          .filter(Boolean).join(' · ');
+      }
+      document.getElementById('confirmed-badge').style.display = 'inline-block';
+      setStatus('✓ Saved to sheet — Row ' + ROW, 'success');
+    } else {
+      setStatus('ISBN saved but lookup failed: ' + (result.error || 'unknown'), 'error');
+    }
+  } catch(err) {
+    setStatus('Save failed: ' + err.message, 'error');
+  }
+
+  document.getElementById('rescan-btn').style.display = 'block';
+}
+
+// ── INIT ───────────────────────────────────────────
+// Wait for ZXing to load then start
+function waitForZXing() {
+  if (typeof ZXingBrowser !== 'undefined') {
+    startScanner();
+  } else {
+    setTimeout(waitForZXing, 100);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', waitForZXing);
+</script>
+</body>
+</html>
