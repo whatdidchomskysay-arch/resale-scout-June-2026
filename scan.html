@@ -112,7 +112,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 </div>
 
 <div class="body">
-  <div class="status scanning" id="status">Starting camera...</div>
+  <div class="status" id="status" style="color:var(--ink-faint,#8A837A)">Tap the button below to start camera</div>
 
   <div class="result-card" id="result-card">
     <div class="result-isbn" id="result-isbn"></div>
@@ -122,6 +122,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
       ✓ Saved to Google Sheet
     </div>
   </div>
+
+  <button class="btn btn-scan" id="start-btn" onclick="onStartTapped()">Tap to start camera</button>
 
   <button class="btn btn-rescan" id="rescan-btn" onclick="startScanner()" style="display:none">
     Scan another barcode
@@ -192,6 +194,7 @@ async function startScanner() {
     video.srcObject = videoStream;
     await video.play();
 
+    document.getElementById('start-btn').style.display = 'none';
     setStatus('Point barcode at the box — scanning automatically', 'scanning');
     runZXing(video);
 
@@ -205,6 +208,8 @@ async function startScanner() {
       setStatus('Camera error: ' + err.message, 'error');
     }
     document.getElementById('no-camera-msg').style.display = 'block';
+    document.getElementById('start-btn').style.display = 'block';
+    document.getElementById('start-btn').textContent = 'Try again';
   }
 }
 
@@ -310,11 +315,17 @@ async function submitToSheet(isbn) {
 // ── INIT ───────────────────────────────────────────
 // Wait for ZXing to load then start
 function waitForZXing() {
+  // Ready — wait for user tap
   if (typeof ZXingBrowser !== 'undefined') {
-    startScanner();
+    setStatus('Tap the button below to start camera', '');
   } else {
     setTimeout(waitForZXing, 100);
   }
+}
+
+function onStartTapped() {
+  document.getElementById('start-btn').style.display = 'none';
+  startScanner();
 }
 
 document.addEventListener('DOMContentLoaded', waitForZXing);
