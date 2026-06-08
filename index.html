@@ -715,7 +715,7 @@ function renderPreviews() {
 }
 
 // ── PROMPTS ───────────────────────────────────────────
-var PROMPT_BOOKS = 'You are an expert used book buyer and reseller. Analyze the uploaded image(s) of books and identify every visible book.\nFor each item include a "location" field. Format EXACTLY as: "Shelf N, X%" where N is the shelf number counting from top (Shelf 1 = topmost shelf) and X is the horizontal position as a percentage from the left edge of the image, rounded to the nearest 5% (e.g. 0%, 5%, 10%...100%). Example: "Shelf 2, 25%" or "Shelf 1, 70%". No other words — just shelf number and percentage.\nOMIT any item where the expected resale market price is under $5 — only include books worth listing.\nFor each book provide three price points: market_price (what a patient private seller gets), quick_price (priced to sell within days), and dealer_price (what a used book dealer or buyback service would pay wholesale — typically 10-30% of market value).\nCRITICAL: Respond with ONE valid JSON object only. No markdown. No code fences. No text before or after. Start with { end with }. Double quotes only. No trailing commas.\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0"},"items":[{"id":1,"title":"Title","author":"Author","condition":"Good","condition_notes":"notes","location":"Shelf 2, 25%","market_price":"$10","quick_price":"$7","dealer_price":"$2","time_to_sell_market":"2-4 weeks","time_to_sell_quick":"3-7 days","priority":"medium","platform_tip":"eBay","rationale":"reason"}]}';
+var PROMPT_BOOKS = 'You are an expert used book buyer and reseller. Analyze the uploaded image(s) of books and identify every visible book.\nFor each item include a "location" field. Format EXACTLY as: "Shelf N, X%" where N is the shelf number counting from top (Shelf 1 = topmost shelf) and X is the horizontal position as a percentage from the left edge of the image, rounded to the nearest 5% (e.g. 0%, 5%, 10%...100%). Example: "Shelf 2, 25%" or "Shelf 1, 70%". No other words — just shelf number and percentage.\nOMIT any item where the expected resale market price is under $5 — only include books worth listing.\nFor each book provide three price points AND time estimates: market_price (patient seller), quick_price (priced to sell in 1-7 days, ~60-75% of market), dealer_price (wholesale 10-30% of market), time_to_sell_market (e.g. 2-4 weeks), time_to_sell_quick (e.g. 1-3 days, 3-7 days). Base on genre and demand — popular fiction sells fast, obscure nonfiction takes months.\nCRITICAL: Respond with ONE valid JSON object only. No markdown. No code fences. No text before or after. Start with { end with }. Double quotes only. No trailing commas.\nFormat: {"summary":{"total_items":0,"worth_listing":0,"total_market_value":"$0-$0"},"items":[{"id":1,"title":"Title","author":"Author","condition":"Good","condition_notes":"notes","location":"Shelf 2, 25%","market_price":"$10","quick_price":"$7","dealer_price":"$2","time_to_sell_market":"2-4 weeks","time_to_sell_quick":"3-7 days","priority":"medium","platform_tip":"eBay","rationale":"reason"}]}';
 
 function buildCoinPrompt() {
   var cols = parseInt(document.getElementById('grid-cols') ? document.getElementById('grid-cols').value : '3') || 3;
@@ -1636,7 +1636,7 @@ function buildCards(items, currentMode) {
         (item.condition_notes ? '<div class="condition-note"><strong>Condition (' + (item.condition||'') + '):</strong> ' + item.condition_notes + '</div>' : '') +
         '<div class="prices">' +
         '<div class="price-box"><div class="price-box-label">Market price</div><div class="price-val">' + (item.market_price || '—') + '</div><div class="price-time">∼' + (item.time_to_sell_market || '?') + ' to sell</div></div>' +
-        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '—') + '</div><div class="price-time">∼' + (item.time_to_sell_quick || '?') + ' to sell</div></div>' +
+        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '—') + '</div><div class="price-time" style="color:var(--gold);font-weight:500">⏱ ' + (item.time_to_sell_quick || '?') + '</div></div>' +
         '</div><div class="rationale">' + (item.rationale || '') + '</div></div>';
     } else if (isCoins) {
       var pct = sheldonPct(item.sheldon_grade);
@@ -1652,7 +1652,7 @@ function buildCards(items, currentMode) {
         (item.grade_notes ? '<div class="condition-note">' + item.grade_notes + '</div>' : '') +
         '<div class="prices">' +
         '<div class="price-box"><div class="price-box-label">Market price</div><div class="price-val">' + (item.market_price || '\u2014') + '</div><div class="price-time">\u223c' + (item.time_to_sell_market || '?') + ' to sell</div></div>' +
-        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '\u2014') + '</div><div class="price-time">\u223c' + (item.time_to_sell_quick || '?') + ' to sell</div></div>' +
+        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '\u2014') + '</div><div class="price-time" style="color:var(--gold);font-weight:500">\u23f1 ' + (item.time_to_sell_quick || '?') + '</div></div>' +
         '<div class="price-box dealer"><div class="price-box-label">Dealer buys at</div><div class="price-val">' + (item.dealer_price || '\u2014') + '</div><div class="price-time">Wholesale offer</div></div>' +
         '</div><div class="rationale">' + (item.rationale || '') + '</div></div>';
     } else if (isGlass) {
@@ -1668,7 +1668,7 @@ function buildCards(items, currentMode) {
         (item.condition_notes ? '<div class="condition-note"><strong>Condition:</strong> ' + item.condition_notes + '</div>' : '') +
         '<div class="prices">' +
         '<div class="price-box"><div class="price-box-label">Market price</div><div class="price-val">' + (item.market_price || '—') + '</div><div class="price-time">∼' + (item.time_to_sell_market || '?') + ' to sell</div></div>' +
-        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '—') + '</div><div class="price-time">∼' + (item.time_to_sell_quick || '?') + ' to sell</div></div>' +
+        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '—') + '</div><div class="price-time" style="color:var(--gold);font-weight:500">⏱ ' + (item.time_to_sell_quick || '?') + '</div></div>' +
         '<div class="price-box dealer"><div class="price-box-label">Dealer buys at</div><div class="price-val">' + (item.dealer_price || '—') + '</div><div class="price-time">Wholesale offer</div></div>' +
         '</div><div class="rationale">' + (item.rationale || '') + '</div></div>';
     } else if (isElec) {
@@ -1684,7 +1684,7 @@ function buildCards(items, currentMode) {
         (item.condition_notes ? '<div class="condition-note"><strong>Condition:</strong> ' + item.condition_notes + '</div>' : '') +
         '<div class="prices">' +
         '<div class="price-box"><div class="price-box-label">Market price</div><div class="price-val">' + (item.market_price || '—') + '</div><div class="price-time">∼' + (item.time_to_sell_market || '?') + ' to sell</div></div>' +
-        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '—') + '</div><div class="price-time">∼' + (item.time_to_sell_quick || '?') + ' to sell</div></div>' +
+        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '—') + '</div><div class="price-time" style="color:var(--gold);font-weight:500">⏱ ' + (item.time_to_sell_quick || '?') + '</div></div>' +
         '<div class="price-box dealer"><div class="price-box-label">Dealer buys at</div><div class="price-val">' + (item.dealer_price || '—') + '</div><div class="price-time">Wholesale offer</div></div>' +
         '</div><div class="rationale">' + (item.rationale || '') + '</div></div>';
     } else {
@@ -1698,7 +1698,7 @@ function buildCards(items, currentMode) {
         (item.condition_notes ? '<div class="condition-note">' + item.condition_notes + '</div>' : '') +
         '<div class="prices">' +
         '<div class="price-box"><div class="price-box-label">Market price</div><div class="price-val">' + (item.market_price || '\u2014') + '</div><div class="price-time">\u223c' + (item.time_to_sell_market || '?') + ' to sell</div></div>' +
-        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '\u2014') + '</div><div class="price-time">\u223c' + (item.time_to_sell_quick || '?') + ' to sell</div></div>' +
+        '<div class="price-box quick"><div class="price-box-label">Quick-turn</div><div class="price-val">' + (item.quick_price || '\u2014') + '</div><div class="price-time" style="color:var(--gold);font-weight:500">\u23f1 ' + (item.time_to_sell_quick || '?') + '</div></div>' +
         '</div><div class="rationale">' + (item.rationale || '') + '</div></div>';
     }
   }).join('');
@@ -2028,6 +2028,10 @@ function renderCompareTable(selected) {
       return cellFor(eng, function(item){ return '<td class="engine-cell"><span class="cell-price" style="color:var(--gold)">' + (item.quick_price||'—') + '</span></td>'; });
     }).join('') + '</tr>';
 
+    rows += '<tr><td class="item-label">⏱ Time (quick)</td>' + selected.map(function(eng) {
+      return cellFor(eng, function(item){ return '<td class="engine-cell"><span style="font-size:11px;color:var(--gold);font-weight:500">' + (item.time_to_sell_quick||'?') + '</span></td>'; });
+    }).join('') + '</tr>';
+
     rows += '<tr><td class="item-label">Dealer buys at</td>' + selected.map(function(eng) {
       return cellFor(eng, function(item){ return '<td class="engine-cell"><span class="cell-price" style="color:var(--red)">' + (item.dealer_price||'—') + '</span></td>'; });
     }).join('') + '</tr>';
@@ -2317,7 +2321,8 @@ function buildExportRow(item, engines, tab) {
     return { 'Date': date, 'Title': item.title||'', 'Author': item.author||'',
       'Location': item.location||'', 'Condition': item.condition||'',
       'Condition Notes': item.condition_notes||'', 'Market Price': item.market_price||'',
-      'Quick-Turn': item.quick_price||'', 'Dealer Price': item.dealer_price||'',
+      'Quick-Turn Price': item.quick_price||'', 'Quick-Turn Time': item.time_to_sell_quick||'',
+      'Market Time': item.time_to_sell_market||'', 'Dealer Price': item.dealer_price||'',
       'Platform': item.platform_tip||'', 'Engines': engStr, 'Notes': '' };
   } else if (tab === 'Coins') {
     return { 'Date': date, 'Coin Name': item.coin_name||'', 'Year': item.year||'',
