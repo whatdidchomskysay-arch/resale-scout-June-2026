@@ -105,6 +105,16 @@ var SHEET   = p.get('sheet')  || 'Books';
 var SCRIPT  = p.get('script') || '';
 document.getElementById('row-badge').textContent = 'Row ' + ROW;
 
+// If returning from a successful save, show confirmation
+var savedIsbn = p.get('saved');
+if (savedIsbn) {
+  document.getElementById('result-isbn').textContent = savedIsbn;
+  document.getElementById('result-card').style.display = 'block';
+  document.getElementById('saved-badge').style.display = 'inline-block';
+  document.getElementById('rescan-btn').style.display = 'block';
+  setStatus('\u2713 ISBN ' + savedIsbn + ' saved to Row ' + ROW, 'success');
+}
+
 // ── STATE ──────────────────────────────────────────
 var stream     = null;
 var scanTimer  = null;
@@ -248,60 +258,43 @@ function onFound(isbn) {
 }
 
 // ── SAVE TO SHEET ──────────────────────────────────
-async function saveToSheet(isbn) {
+function saveToSheet(isbn) {
   if (!SCRIPT) {
-    setStatus('✓ ISBN: ' + isbn + ' — no Apps Script URL in link. Check sheet scan links.', 'error');
+    setStatus('✓ ISBN: ' + isbn + ' — no Apps Script URL configured.', 'error');
     return;
   }
   setStatus(spin() + 'Saving to sheet...', 'active');
-  var url = SCRIPT + '?action=writeIsbn'
-    + '&row='   + encodeURIComponent(ROW)
+
+  // Use hidden form submit — avoids CORS entirely
+  // Apps Script will process and redirect back to a success page
+  var returnUrl = location.href.split('?')[0]
+    + '?row=' + encodeURIComponent(ROW)
     + '&sheet=' + encodeURIComponent(SHEET)
-    + '&isbn='  + encodeURIComponent(isbn);
+    + '&script=' + encodeURIComponent(SCRIPT)
+    + '&saved=' + encodeURIComponent(isbn);
 
-  // Show the URL so we can debug
-  document.getElementById('result-meta').textContent = 'Calling: ' + url.substring(0,80) + '...';
+  var form = document.createElement('form');
+  form.method = 'GET';
+  form.action = SCRIPT;
 
-  try {
-    var resp = await fetch(url, { method: 'GET', redirect: 'follow' });
-    var text = await resp.text();
+  var fields = {
+    action: 'writeIsbn',
+    row: ROW,
+    sheet: SHEET,
+    isbn: isbn,
+    returnUrl: returnUrl
+  };
 
-    // Check for HTML error page
-    if (text.trim().charAt(0) === '<') {
-      setStatus('Apps Script returned HTML (wrong URL or not deployed). ISBN: ' + isbn, 'error');
-      document.getElementById('result-meta').textContent = 'Response: ' + text.substring(0,100);
-      return;
-    }
+  Object.keys(fields).forEach(function(k) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = k;
+    input.value = fields[k];
+    form.appendChild(input);
+  });
 
-    var result;
-    try { result = JSON.parse(text); }
-    catch(e) {
-      setStatus('Bad response from Apps Script. ISBN: ' + isbn, 'error');
-      document.getElementById('result-meta').textContent = 'Raw: ' + text.substring(0,150);
-      return;
-    }
-
-    if (result.success) {
-      var book = result.book;
-      if (book && book.title) {
-        document.getElementById('result-book').textContent = book.title;
-        document.getElementById('result-meta').textContent =
-          [book.author, book.year, book.pages ? book.pages + ' pages' : '']
-          .filter(Boolean).join(' · ');
-      } else {
-        document.getElementById('result-meta').textContent = 'ISBN saved. No book data found in Open Library.';
-      }
-      document.getElementById('saved-badge').style.display = 'inline-block';
-      setStatus('✓ Saved to Row ' + ROW, 'success');
-    } else {
-      setStatus('Script error: ' + (result.error||'unknown'), 'error');
-    }
-  } catch(e) {
-    // Failed to fetch — likely SCRIPT param is empty or malformed
-    setStatus('Network error: ' + e.message, 'error');
-    document.getElementById('result-meta').textContent =
-      'URL tried: ' + url.substring(0,120);
-  }
+  document.body.appendChild(form);
+  form.submit();
 }
 
 // ── RESET ──────────────────────────────────────────
