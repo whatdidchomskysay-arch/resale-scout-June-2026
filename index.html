@@ -2375,9 +2375,22 @@ function injectCheckboxes() {
   var tab = getSheetTab();
   var items = lastResult.items || [];
   var itemsList = document.getElementById('items-list');
-  if (!itemsList || itemsList.querySelector('.check-all-bar')) return;
+  if (!itemsList) return;
 
-  // Wrap existing cards in a grid layout with left checkbox column
+  // Remove any existing check-all bar and wrappers before re-injecting
+  // (needed after sort re-renders cards)
+  var existingBar = itemsList.querySelector('.check-all-bar');
+  if (existingBar) existingBar.remove();
+  // Unwrap any existing cards-with-checks wrappers
+  itemsList.querySelectorAll('.cards-with-checks').forEach(function(wrapper) {
+    var card = wrapper.querySelector('.item-card');
+    if (card) {
+      card.style.marginBottom = '';
+      wrapper.parentNode.insertBefore(card, wrapper);
+    }
+    wrapper.remove();
+  });
+
   var cards = Array.from(itemsList.querySelectorAll('.item-card'));
   if (!cards.length) return;
 
@@ -2388,38 +2401,56 @@ function injectCheckboxes() {
     '<label for="chk_all" style="font-size:12px;color:var(--ink-mid);cursor:pointer;font-family:DM Mono,monospace;user-select:none">Select all for export</label>';
   itemsList.insertBefore(allBar, itemsList.firstChild);
 
+  function syncCheckAll() {
+    var allCbs = itemsList.querySelectorAll('.card-cb');
+    var chkAll = document.getElementById('chk_all');
+    if (chkAll && allCbs.length > 0) {
+      chkAll.checked = Array.from(allCbs).every(function(c){ return c.checked; });
+      chkAll.indeterminate = !chkAll.checked && Array.from(allCbs).some(function(c){ return c.checked; });
+    }
+  }
+
   document.getElementById('chk_all').addEventListener('change', function(e) {
-    itemsList.querySelectorAll('.card-cb').forEach(function(cb){ cb.checked = e.target.checked; cb.dispatchEvent(new Event('change')); });
+    itemsList.querySelectorAll('.card-cb').forEach(function(cb){
+      cb.checked = e.target.checked;
+      cb.dispatchEvent(new Event('change'));
+    });
   });
 
-  // Wrap each card with a left checkbox column
+  // Wrap each card — use card's own title text as key, not array index
+  // so sort doesn't break the mapping
   cards.forEach(function(card, idx) {
-    if (card.parentElement.classList.contains('cards-with-checks')) return;
-    var item = items[idx]; if (!item) return;
-    var key = 'item_'+idx+'_'+(item.title||item.coin_name||item.maker||item.model||idx).toString().substring(0,20);
+    // Get item data: try matching by card title text to lastResult.items
+    var titleEl = card.querySelector('.card-title');
+    var titleText = titleEl ? titleEl.textContent.trim() : '';
+    var item = items[idx] || items.find(function(it){
+      return (it.title||it.coin_name||it.maker||it.model||'') === titleText;
+    }) || items[idx];
+    if (!item) return;
+
+    var key = 'item_'+idx+'_'+(item.title||item.coin_name||item.maker||item.model||idx).toString().substring(0,20).replace(/\s+/g,'_');
 
     var wrapper = document.createElement('div');
     wrapper.className = 'cards-with-checks';
-    wrapper.style.marginBottom = '10px';
+    wrapper.style.cssText = 'display:grid;grid-template-columns:28px 1fr;margin-bottom:6px';
 
     var checkCol = document.createElement('div');
     checkCol.className = 'card-check-col';
+    checkCol.style.cssText = 'display:flex;align-items:flex-start;justify-content:center;padding-top:10px';
+
     var cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.className = 'card-cb item-checkbox'; cb.id = 'ichk_'+idx;
+    cb.type = 'checkbox';
+    cb.className = 'card-cb item-checkbox';
+    cb.id = 'ichk_'+idx;
     cb.title = 'Add to Google Sheets';
     cb.addEventListener('change', function(e) {
-      if (e.target.checked) selectedItems[key]={item:item,engines:['single'],tab:tab};
+      if (e.target.checked) selectedItems[key] = {item:item, engines:['single'], tab:tab};
       else delete selectedItems[key];
-      // Update check-all state
-      var allCbs = itemsList.querySelectorAll('.card-cb');
-      var allChecked = Array.from(allCbs).every(function(c){ return c.checked; });
-      var chkAll = document.getElementById('chk_all');
-      if (chkAll) chkAll.checked = allChecked;
+      syncCheckAll();
       updateExportBar();
     });
     checkCol.appendChild(cb);
 
-    // Remove bottom margin from card since wrapper handles it
     card.style.marginBottom = '0';
     card.parentNode.insertBefore(wrapper, card);
     wrapper.appendChild(checkCol);
