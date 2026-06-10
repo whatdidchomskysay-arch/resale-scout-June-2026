@@ -250,18 +250,37 @@ function onFound(isbn) {
 // ── SAVE TO SHEET ──────────────────────────────────
 async function saveToSheet(isbn) {
   if (!SCRIPT) {
-    setStatus('✓ ISBN: ' + isbn + ' (no sheet URL configured)', 'success');
+    setStatus('✓ ISBN: ' + isbn + ' — no Apps Script URL in link. Check sheet scan links.', 'error');
     return;
   }
-  setStatus(spin() + 'Looking up book...', 'active');
+  setStatus(spin() + 'Saving to sheet...', 'active');
+  var url = SCRIPT + '?action=writeIsbn'
+    + '&row='   + encodeURIComponent(ROW)
+    + '&sheet=' + encodeURIComponent(SHEET)
+    + '&isbn='  + encodeURIComponent(isbn);
+
+  // Show the URL so we can debug
+  document.getElementById('result-meta').textContent = 'Calling: ' + url.substring(0,80) + '...';
+
   try {
-    // Apps Script cross-origin: use GET with all params in URL
-    var url = SCRIPT + '?action=writeIsbn'
-      + '&row='   + encodeURIComponent(ROW)
-      + '&sheet=' + encodeURIComponent(SHEET)
-      + '&isbn='  + encodeURIComponent(isbn);
-    var resp   = await fetch(url, { method: 'GET', redirect: 'follow' });
-    var result = await resp.json();
+    var resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+    var text = await resp.text();
+
+    // Check for HTML error page
+    if (text.trim().charAt(0) === '<') {
+      setStatus('Apps Script returned HTML (wrong URL or not deployed). ISBN: ' + isbn, 'error');
+      document.getElementById('result-meta').textContent = 'Response: ' + text.substring(0,100);
+      return;
+    }
+
+    var result;
+    try { result = JSON.parse(text); }
+    catch(e) {
+      setStatus('Bad response from Apps Script. ISBN: ' + isbn, 'error');
+      document.getElementById('result-meta').textContent = 'Raw: ' + text.substring(0,150);
+      return;
+    }
+
     if (result.success) {
       var book = result.book;
       if (book && book.title) {
@@ -269,14 +288,19 @@ async function saveToSheet(isbn) {
         document.getElementById('result-meta').textContent =
           [book.author, book.year, book.pages ? book.pages + ' pages' : '']
           .filter(Boolean).join(' · ');
+      } else {
+        document.getElementById('result-meta').textContent = 'ISBN saved. No book data found in Open Library.';
       }
       document.getElementById('saved-badge').style.display = 'inline-block';
       setStatus('✓ Saved to Row ' + ROW, 'success');
     } else {
-      setStatus('ISBN saved, lookup failed: ' + (result.error||''), 'error');
+      setStatus('Script error: ' + (result.error||'unknown'), 'error');
     }
   } catch(e) {
-    setStatus('Save error: ' + e.message, 'error');
+    // Failed to fetch — likely SCRIPT param is empty or malformed
+    setStatus('Network error: ' + e.message, 'error');
+    document.getElementById('result-meta').textContent =
+      'URL tried: ' + url.substring(0,120);
   }
 }
 
