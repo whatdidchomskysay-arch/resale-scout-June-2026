@@ -102,7 +102,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 var p       = new URLSearchParams(location.search);
 var ROW     = p.get('row')    || '?';
 var SHEET   = p.get('sheet')  || 'Books';
-var SCRIPT  = p.get('script') || '';
+// Apps Script URL hardcoded — update this line when you redeploy
+var SCRIPT = 'https://script.google.com/macros/s/AKfycbw0M1w8_5BR95UqukFk0fxxpWEqm8IclikoRG4S3hGDCoztHNCQeG1T2YXEOHelMrLFVw/exec';
 document.getElementById('row-badge').textContent = 'Row ' + ROW;
 
 
@@ -250,38 +251,45 @@ function onFound(isbn) {
 }
 
 // ── SAVE TO SHEET ──────────────────────────────────
-async function saveToSheet(isbn) {
-  if (!SCRIPT) {
-    setStatus('\u2713 ISBN: ' + isbn + ' detected. No sheet URL — check scan link.', 'error');
-    document.getElementById('result-meta').textContent = 'ISBN saved locally only.';
-    return;
-  }
-  setStatus(spin() + 'Saving ISBN to sheet...', 'active');
+function saveToSheet(isbn) {
+  setStatus(spin() + 'Saving to sheet...', 'active');
 
-  var url = SCRIPT
-    + '?action=writeIsbn'
-    + '&row='   + encodeURIComponent(ROW)
-    + '&sheet=' + encodeURIComponent(SHEET)
-    + '&isbn='  + encodeURIComponent(isbn);
+  var cbName = 'rs_cb_' + Date.now();
 
-  try {
-    // Use no-cors — we won't get a readable response but the request fires
-    // Apps Script will still write to the sheet
-    await fetch(url, { method: 'GET', mode: 'no-cors', redirect: 'follow' });
-
-    // Since no-cors gives us an opaque response we can't read it
-    // Just show success and do a separate Open Library lookup client-side
+  var timer = setTimeout(function() {
+    cleanup();
     document.getElementById('saved-badge').style.display = 'inline-block';
     setStatus('\u2713 ISBN ' + isbn + ' sent to sheet (Row ' + ROW + ')', 'success');
-
-    // Look up book data directly from Open Library (no CORS issues)
     lookupBookClientSide(isbn);
+  }, 10000);
 
-  } catch(e) {
-    // Even no-cors failed — network issue
-    setStatus('Could not reach sheet. ISBN: ' + isbn + ' (write it down manually)', 'error');
-    document.getElementById('result-meta').textContent = 'Network error: ' + e.message;
+  function cleanup() {
+    clearTimeout(timer);
+    delete window[cbName];
+    var el = document.getElementById('_jsonp_tag');
+    if (el) el.remove();
   }
+
+  window[cbName] = function(result) {
+    cleanup();
+    if (result && result.success) {
+      document.getElementById('saved-badge').style.display = 'inline-block';
+      setStatus('\u2713 Saved to Row ' + ROW, 'success');
+      lookupBookClientSide(isbn);
+    } else {
+      setStatus('Error: ' + (result && result.error ? result.error : 'unknown'), 'error');
+    }
+  };
+
+  var s = document.createElement('script');
+  s.id = '_jsonp_tag';
+  s.src = SCRIPT
+    + '?action=writeIsbn'
+    + '&row='      + encodeURIComponent(ROW)
+    + '&sheet='    + encodeURIComponent(SHEET)
+    + '&isbn='     + encodeURIComponent(isbn)
+    + '&callback=' + cbName;
+  document.head.appendChild(s);
 }
 
 async function lookupBookClientSide(isbn) {
