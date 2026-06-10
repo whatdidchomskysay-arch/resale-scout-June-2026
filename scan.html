@@ -5,305 +5,263 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#1A1714">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Resale Scout — Scan ISBN</title>
-<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
      background:#1A1714;color:#FAF7F2;min-height:100vh;
-     display:flex;flex-direction:column;overflow:hidden}
-
-.header{background:#2D2926;padding:12px 16px;display:flex;align-items:center;
-        justify-content:space-between;border-bottom:1px solid #3D3530;flex-shrink:0}
+     display:flex;flex-direction:column}
+.header{background:#2D2926;padding:12px 16px;display:flex;
+        align-items:center;justify-content:space-between;
+        border-bottom:1px solid #3D3530;flex-shrink:0}
 .header h1{font-size:15px;font-weight:500}
 .row-badge{font-size:11px;background:#B8860B;color:#1A1714;
            padding:3px 10px;border-radius:10px;font-weight:700}
-
-/* ── VIEWFINDER ── */
-.scanner-wrap{position:relative;background:#000;flex-shrink:0;
-              width:100%;max-height:58vh;overflow:hidden}
+.scanner-wrap{position:relative;background:#000;width:100%;
+              max-height:55vh;overflow:hidden;flex-shrink:0}
 #video{width:100%;height:100%;object-fit:cover;display:block}
-
-.aim-overlay{position:absolute;inset:0;display:flex;
-             align-items:center;justify-content:center;pointer-events:none}
-.aim-box{position:relative;width:80%;max-width:300px;aspect-ratio:2.5/1;
-         border:2px solid rgba(184,134,11,.6);border-radius:6px}
-.corner{position:absolute;width:18px;height:18px;border-color:#FAF7F2;border-style:solid}
-.tl{top:-1px;left:-1px;border-width:3px 0 0 3px;border-radius:2px 0 0 0}
-.tr{top:-1px;right:-1px;border-width:3px 3px 0 0;border-radius:0 2px 0 0}
-.bl{bottom:-1px;left:-1px;border-width:0 0 3px 3px;border-radius:0 0 0 2px}
-.br{bottom:-1px;right:-1px;border-width:0 3px 3px 0;border-radius:0 0 2px 0}
-.scan-line{position:absolute;left:0;right:0;height:2px;
-           background:linear-gradient(90deg,transparent,#B8860B,transparent);
-           animation:scanline 2s ease-in-out infinite}
-@keyframes scanline{0%,100%{top:5%}50%{top:92%}}
-.aim-label{position:absolute;bottom:-24px;left:0;right:0;text-align:center;
-           font-size:11px;color:#B8860B;font-weight:500;letter-spacing:.3px}
-
-/* ── BODY ── */
-.body{flex:1;padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
-
-.status{text-align:center;padding:8px 12px;font-size:13px;
-        color:#8A837A;min-height:34px;border-radius:6px;line-height:1.4}
-.status.scanning{color:#B8860B;font-weight:500}
+#overlay{position:absolute;inset:0;pointer-events:none}
+.body{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.status{text-align:center;padding:8px;font-size:13px;color:#8A837A;
+        border-radius:6px;line-height:1.5;min-height:32px}
+.status.active{color:#B8860B;font-weight:500}
 .status.success{background:#1A3A2A;color:#4ADE80;font-weight:600}
 .status.error{background:#3A1A1A;color:#F87171}
-
 .result-card{background:#2D2926;border-radius:10px;padding:14px;display:none}
-.result-isbn{font-family:monospace;font-size:19px;color:#B8860B;
-             letter-spacing:2px;margin-bottom:10px;word-break:break-all}
+.result-isbn{font-family:monospace;font-size:20px;color:#B8860B;
+             letter-spacing:2px;margin-bottom:8px;word-break:break-all}
 .result-book{font-size:14px;font-weight:600;line-height:1.3;margin-bottom:3px}
 .result-meta{font-size:12px;color:#8A837A;line-height:1.5}
-.confirmed-badge{display:inline-block;margin-top:8px;background:#1A3A2A;
-                 color:#4ADE80;font-size:11px;padding:3px 10px;
-                 border-radius:10px;font-weight:500}
-
+.saved-badge{display:none;margin-top:8px;background:#1A3A2A;
+             color:#4ADE80;font-size:11px;padding:3px 10px;
+             border-radius:10px;font-weight:500}
 .btn{width:100%;padding:13px;border:none;border-radius:10px;
      font-size:15px;font-weight:600;cursor:pointer;
-     -webkit-tap-highlight-color:transparent;transition:opacity .15s}
+     -webkit-tap-highlight-color:transparent}
 .btn:active{opacity:.75}
-.btn-scan{background:#B8860B;color:#1A1714}
-.btn-rescan{background:#2D2926;color:#8A837A;border:1px solid #3D3530;font-size:13px}
-
-.manual{margin-top:2px}
-.manual-label{font-size:11px;color:#4A4540;margin-bottom:6px;text-align:center}
+.btn-gold{background:#B8860B;color:#1A1714}
+.btn-dim{background:#2D2926;color:#8A837A;
+         border:1px solid #3D3530;font-size:13px}
+.manual-label{font-size:11px;color:#4A4540;text-align:center;margin-bottom:5px}
 .manual-row{display:flex;gap:8px}
-.manual-input{flex:1;padding:11px 12px;background:#2D2926;color:#FAF7F2;
-              border:1px solid #3D3530;border-radius:8px;font-size:16px;
-              font-family:monospace;letter-spacing:1px;outline:none;
-              -webkit-appearance:none}
-.manual-input:focus{border-color:#B8860B}
-.manual-btn{padding:11px 16px;background:#4A4540;color:#FAF7F2;
-            border:none;border-radius:8px;font-size:14px;cursor:pointer}
-
-.spinner{display:inline-block;width:14px;height:14px;
-         border:2px solid #3D3530;border-top-color:#B8860B;
-         border-radius:50%;animation:spin .7s linear infinite;
-         vertical-align:middle;margin-right:5px}
+.isbn-input{flex:1;padding:11px 12px;background:#2D2926;color:#FAF7F2;
+            border:1px solid #3D3530;border-radius:8px;font-size:16px;
+            font-family:monospace;letter-spacing:1px;outline:none;
+            -webkit-appearance:none}
+.isbn-input:focus{border-color:#B8860B}
+.go-btn{padding:11px 16px;background:#4A4540;color:#FAF7F2;
+        border:none;border-radius:8px;font-size:14px;cursor:pointer}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #3D3530;
+      border-top-color:#B8860B;border-radius:50%;
+      animation:spin .7s linear infinite;vertical-align:middle;margin-right:4px}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-.no-camera-msg{display:none;text-align:center;padding:20px;
-               color:#4A4540;font-size:13px;line-height:1.6}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>📷 Scan ISBN Barcode</h1>
+  <h1>📷 Scan ISBN</h1>
   <span class="row-badge" id="row-badge">Row ?</span>
 </div>
 
 <div class="scanner-wrap" id="scanner-wrap">
   <video id="video" autoplay muted playsinline webkit-playsinline></video>
-  <div class="aim-overlay">
-    <div class="aim-box">
-      <div class="corner tl"></div>
-      <div class="corner tr"></div>
-      <div class="corner bl"></div>
-      <div class="corner br"></div>
-      <div class="scan-line"></div>
-      <div class="aim-label">Align barcode here</div>
-    </div>
-  </div>
-  <div class="no-camera-msg" id="no-camera-msg">
-    Camera not available.<br>Use manual entry below.
-  </div>
+  <canvas id="overlay" style="display:none"></canvas>
 </div>
 
 <div class="body">
-  <div class="status" id="status" style="color:var(--ink-faint,#8A837A)">Tap the button below to start camera</div>
+  <div class="status active" id="status">Tap button to start camera</div>
 
   <div class="result-card" id="result-card">
     <div class="result-isbn" id="result-isbn"></div>
     <div class="result-book" id="result-book"></div>
     <div class="result-meta" id="result-meta"></div>
-    <div class="confirmed-badge" id="confirmed-badge" style="display:none">
-      ✓ Saved to Google Sheet
-    </div>
+    <div class="saved-badge" id="saved-badge">✓ Saved to Google Sheet</div>
   </div>
 
-  <button class="btn btn-scan" id="start-btn" onclick="onStartTapped()">Tap to start camera</button>
-
-  <button class="btn btn-rescan" id="rescan-btn" onclick="startScanner()" style="display:none">
+  <button class="btn btn-gold" id="start-btn" onclick="startCamera()">
+    Start camera
+  </button>
+  <button class="btn btn-dim" id="rescan-btn" onclick="resetScanner()" style="display:none">
     Scan another barcode
   </button>
 
-  <div class="manual">
-    <div class="manual-label">— or type ISBN manually —</div>
+  <div>
+    <div class="manual-label">— or enter ISBN manually —</div>
     <div class="manual-row">
-      <input type="text" id="manual-input" class="manual-input"
+      <input type="text" id="isbn-input" class="isbn-input"
              placeholder="9780000000000" inputmode="numeric" maxlength="17"
-             onkeydown="if(event.key==='Enter') manualSubmit()">
-      <button class="manual-btn" onclick="manualSubmit()">Go</button>
+             onkeydown="if(event.key==='Enter')manualGo()">
+      <button class="go-btn" onclick="manualGo()">Go</button>
     </div>
   </div>
 </div>
 
 <script>
-// ── CONFIG FROM URL PARAMS ─────────────────────────
-var params = new URLSearchParams(window.location.search);
-var ROW         = params.get('row')   || '?';
-var SHEET       = params.get('sheet') || 'Books';
-var SCRIPT_URL  = params.get('script') || '';
-
+// ── URL PARAMS ─────────────────────────────────────
+var p       = new URLSearchParams(location.search);
+var ROW     = p.get('row')    || '?';
+var SHEET   = p.get('sheet')  || 'Books';
+var SCRIPT  = p.get('script') || '';
 document.getElementById('row-badge').textContent = 'Row ' + ROW;
 
 // ── STATE ──────────────────────────────────────────
-var codeReader = null;
+var stream     = null;
+var scanTimer  = null;
+var detector   = null;
 var scanning   = false;
-var videoStream = null;
 
-// ── STATUS HELPERS ─────────────────────────────────
+// ── HELPERS ────────────────────────────────────────
 function setStatus(html, cls) {
   var el = document.getElementById('status');
   el.innerHTML = html;
-  el.className = 'status ' + (cls || 'scanning');
+  el.className = 'status ' + (cls || '');
+}
+function spin() { return '<span class="spin"></span>'; }
+
+// ── CAMERA START ───────────────────────────────────
+async function startCamera() {
+  document.getElementById('start-btn').style.display = 'none';
+  setStatus('Starting camera...', 'active');
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' },
+               width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    var video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+    setStatus('Camera on — hold barcode steady in frame', 'active');
+    beginScanning(video);
+  } catch(err) {
+    setStatus('Camera error: ' + err.message + '. Use manual entry below.', 'error');
+    document.getElementById('start-btn').style.display = 'block';
+  }
 }
 
-function spinner() {
-  return '<span class="spinner"></span>';
-}
-
-// ── CAMERA ─────────────────────────────────────────
-async function startScanner() {
-  document.getElementById('result-card').style.display  = 'none';
-  document.getElementById('rescan-btn').style.display   = 'none';
-  document.getElementById('confirmed-badge').style.display = 'none';
-  setStatus('Starting camera...', 'scanning');
+// ── SCANNING ───────────────────────────────────────
+async function beginScanning(video) {
   scanning = true;
 
-  // Stop any existing stream
-  if (videoStream) {
-    videoStream.getTracks().forEach(function(t){ t.stop(); });
-    videoStream = null;
-  }
-
-  try {
-    // Request back camera directly — most reliable on Android Chrome
-    var constraints = {
-      video: {
-        facingMode: { ideal: 'environment' },
-        width:  { ideal: 1280 },
-        height: { ideal: 720 }
-      }
-    };
-
-    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-    var video = document.getElementById('video');
-    video.srcObject = videoStream;
-    await video.play();
-
-    document.getElementById('start-btn').style.display = 'none';
-    setStatus('Point barcode at the box — scanning automatically', 'scanning');
-    runZXing(video);
-
-  } catch(err) {
-    scanning = false;
-    if (err.name === 'NotAllowedError') {
-      setStatus('Camera permission denied. Allow camera in Chrome settings, or use manual entry below.', 'error');
-    } else if (err.name === 'NotFoundError') {
-      setStatus('No camera found. Use manual entry below.', 'error');
-    } else {
-      setStatus('Camera error: ' + err.message, 'error');
+  // ── METHOD 1: Native BarcodeDetector (Android Chrome 83+) ──
+  if (typeof BarcodeDetector !== 'undefined') {
+    setStatus('Scanning... (hold barcode steady)', 'active');
+    try {
+      detector = new BarcodeDetector({ formats: ['ean_13','ean_8','isbn'] });
+    } catch(e) {
+      detector = new BarcodeDetector(); // fallback: all formats
     }
-    document.getElementById('no-camera-msg').style.display = 'block';
-    document.getElementById('start-btn').style.display = 'block';
-    document.getElementById('start-btn').textContent = 'Try again';
-  }
-}
-
-function runZXing(video) {
-  if (!scanning) return;
-  try {
-    if (codeReader) { try { codeReader.reset(); } catch(e) {} }
-    // Support both ZXingBrowser namespace and ZXing namespace
-    var MultiReader = (typeof ZXingBrowser !== 'undefined' && ZXingBrowser.BrowserMultiFormatReader)
-      ? ZXingBrowser.BrowserMultiFormatReader
-      : (typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader)
-      ? ZXing.BrowserMultiFormatReader
-      : null;
-    if (!MultiReader) {
-      setStatus('Scanner library not loaded. Use manual entry below.', 'error');
-      document.getElementById('start-btn').style.display = 'block';
-      document.getElementById('start-btn').textContent = 'Try again';
-      return;
-    }
-    codeReader = new MultiReader();
-    codeReader.decodeFromVideoElement(video, function(result, err) {
-      if (!scanning) return;
-      if (result) {
-        var raw = result.getText ? result.getText() : result.text || '';
-        var isbn = raw.replace(/[^0-9X]/gi, '');
-        if (isbn.length === 10 || isbn.length === 13) {
-          scanning = false;
-          try { codeReader.reset(); } catch(e) {}
-          if (videoStream) { videoStream.getTracks().forEach(function(t){ t.stop(); }); }
-          onFound(isbn);
-        }
-      }
-    });
-  } catch(e) {
-    setStatus('Scanner error: ' + e.message + '. Use manual entry.', 'error');
-    document.getElementById('start-btn').style.display = 'block';
-    document.getElementById('start-btn').textContent = 'Try again';
-  }
-}
-
-function onFound(isbn) {
-  setStatus('✓ Barcode detected!', 'success');
-  document.getElementById('result-isbn').textContent = isbn;
-  document.getElementById('result-book').textContent = '';
-  document.getElementById('result-meta').textContent = '';
-  document.getElementById('result-card').style.display = 'block';
-
-  // Small vibration feedback on Android
-  if (navigator.vibrate) navigator.vibrate(80);
-
-  submitToSheet(isbn);
-}
-
-// ── MANUAL ENTRY ───────────────────────────────────
-function manualSubmit() {
-  var val = document.getElementById('manual-input').value.replace(/[^0-9X]/gi,'').trim();
-  if (val.length < 9) {
-    setStatus('Enter a valid 10 or 13 digit ISBN.', 'error'); return;
-  }
-  scanning = false;
-  if (codeReader) { try { codeReader.reset(); } catch(e) {} }
-  if (videoStream) { videoStream.getTracks().forEach(function(t){ t.stop(); }); }
-  document.getElementById('result-isbn').textContent = val;
-  document.getElementById('result-book').textContent = '';
-  document.getElementById('result-meta').textContent = '';
-  document.getElementById('result-card').style.display = 'block';
-  submitToSheet(val);
-}
-
-// ── SUBMIT TO APPS SCRIPT ──────────────────────────
-async function submitToSheet(isbn) {
-  if (!SCRIPT_URL) {
-    setStatus('No Apps Script URL configured. ISBN: ' + isbn, 'error');
-    document.getElementById('rescan-btn').style.display = 'block';
+    scanWithNativeDetector(video);
     return;
   }
 
-  setStatus(spinner() + 'Looking up book data...', 'scanning');
+  // ── METHOD 2: Canvas + image data polling ──
+  // Capture frames to canvas and use a simple pattern match
+  // as fallback when BarcodeDetector isn't available
+  setStatus('Scanning... (tap barcode area if it doesn\'t auto-detect)', 'active');
+  scanWithCanvas(video);
+}
 
+// Native BarcodeDetector loop
+async function scanWithNativeDetector(video) {
+  if (!scanning) return;
   try {
-    var url = SCRIPT_URL
-      + '?action=writeIsbn'
-      + '&row=' + encodeURIComponent(ROW)
+    var barcodes = await detector.detect(video);
+    for (var i = 0; i < barcodes.length; i++) {
+      var raw = barcodes[i].rawValue || '';
+      var isbn = raw.replace(/[^0-9X]/gi, '');
+      if (isbn.length === 13 || isbn.length === 10) {
+        onFound(isbn); return;
+      }
+    }
+  } catch(e) { /* keep going */ }
+  if (scanning) scanTimer = setTimeout(function(){ scanWithNativeDetector(video); }, 200);
+}
+
+// Canvas frame capture — tap to capture a frame and extract digits
+function scanWithCanvas(video) {
+  // Show a "tap to scan" button overlay approach
+  setStatus('BarcodeDetector not available on this browser. Use manual entry or try Chrome on Android 9+.', 'error');
+  document.getElementById('start-btn').textContent = 'Capture frame';
+  document.getElementById('start-btn').style.display = 'block';
+  document.getElementById('start-btn').onclick = function() { captureFrame(video); };
+}
+
+function captureFrame(video) {
+  var canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  // Send frame to Gemini to read the printed ISBN digits
+  var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  document.getElementById('start-btn').style.display = 'none';
+  readWithGemini(dataUrl);
+}
+
+// ── GEMINI FALLBACK (reads printed digits, not barcode lines) ──
+async function readWithGemini(dataUrl) {
+  setStatus(spin() + 'Reading ISBN digits from image...', 'active');
+  // Gemini key passed via URL or prompt
+  var gkey = p.get('gkey') || '';
+  if (!gkey) {
+    gkey = prompt('Enter your Gemini API key to read the barcode image:');
+    if (!gkey) { setStatus('No API key. Use manual entry below.', 'error'); return; }
+  }
+  try {
+    var base64 = dataUrl.split(',')[1];
+    var resp = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + gkey,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [
+          { inline_data: { mime_type: 'image/jpeg', data: base64 } },
+          { text: 'Find the ISBN number on this book cover. The ISBN is printed as plain digits below the barcode, usually 13 digits starting with 978 or 979. Return ONLY those digits, nothing else. If not found return NOTFOUND.' }
+        ]}], generationConfig: { temperature: 0, maxOutputTokens: 30 } })
+      });
+    var data = await resp.json();
+    var raw = ((data.candidates||[])[0]||{}).content?.parts?.[0]?.text || '';
+    var isbn = raw.replace(/[^0-9X]/gi,'').trim();
+    if (isbn && isbn !== 'NOTFOUND' && isbn.length >= 10) {
+      onFound(isbn);
+    } else {
+      setStatus('Could not read ISBN. Try manual entry below.', 'error');
+      document.getElementById('start-btn').textContent = 'Capture another frame';
+      document.getElementById('start-btn').style.display = 'block';
+    }
+  } catch(e) {
+    setStatus('Read failed: ' + e.message, 'error');
+  }
+}
+
+// ── ON BARCODE FOUND ───────────────────────────────
+function onFound(isbn) {
+  scanning = false;
+  if (scanTimer) clearTimeout(scanTimer);
+  if (stream) stream.getTracks().forEach(function(t){ t.stop(); });
+  if (navigator.vibrate) navigator.vibrate(100);
+
+  setStatus('✓ Barcode detected!', 'success');
+  document.getElementById('result-isbn').textContent = isbn;
+  document.getElementById('result-card').style.display = 'block';
+  document.getElementById('rescan-btn').style.display = 'block';
+
+  saveToSheet(isbn);
+}
+
+// ── SAVE TO SHEET ──────────────────────────────────
+async function saveToSheet(isbn) {
+  if (!SCRIPT) {
+    setStatus('✓ ISBN: ' + isbn + ' (no sheet URL configured)', 'success');
+    return;
+  }
+  setStatus(spin() + 'Looking up book...', 'active');
+  try {
+    var url = SCRIPT + '?action=writeIsbn'
+      + '&row='   + encodeURIComponent(ROW)
       + '&sheet=' + encodeURIComponent(SHEET)
-      + '&isbn=' + encodeURIComponent(isbn);
-
-    var resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: ''
-    });
+      + '&isbn='  + encodeURIComponent(isbn);
+    var resp   = await fetch(url, { method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: '' });
     var result = await resp.json();
-
     if (result.success) {
       var book = result.book;
       if (book && book.title) {
@@ -312,49 +270,43 @@ async function submitToSheet(isbn) {
           [book.author, book.year, book.pages ? book.pages + ' pages' : '']
           .filter(Boolean).join(' · ');
       }
-      document.getElementById('confirmed-badge').style.display = 'inline-block';
-      setStatus('✓ Saved to sheet — Row ' + ROW, 'success');
+      document.getElementById('saved-badge').style.display = 'inline-block';
+      setStatus('✓ Saved to Row ' + ROW, 'success');
     } else {
-      setStatus('ISBN saved but lookup failed: ' + (result.error || 'unknown'), 'error');
+      setStatus('ISBN saved, lookup failed: ' + (result.error||''), 'error');
     }
-  } catch(err) {
-    setStatus('Save failed: ' + err.message, 'error');
-  }
-
-  document.getElementById('rescan-btn').style.display = 'block';
-}
-
-// ── INIT ───────────────────────────────────────────
-// Wait for ZXing to load then start
-function waitForZXing() {
-  // Ready — wait for user tap
-  if (typeof ZXingBrowser !== 'undefined' || typeof ZXing !== 'undefined') {
-    setStatus('Tap the button below to start camera', '');
-  } else {
-    setTimeout(waitForZXing, 100);
+  } catch(e) {
+    setStatus('Save error: ' + e.message, 'error');
   }
 }
 
-function onStartTapped() {
-  document.getElementById('start-btn').style.display = 'none';
-  // Give the library one more moment if still loading
-  if (typeof ZXingBrowser === 'undefined' && typeof ZXing === 'undefined') {
-    setStatus('Library loading... please wait', 'scanning');
-    setTimeout(function() {
-      if (typeof ZXingBrowser === 'undefined' && typeof ZXing === 'undefined') {
-        setStatus('Library failed to load. Use manual ISBN entry below.', 'error');
-        document.getElementById('start-btn').style.display = 'block';
-        document.getElementById('start-btn').textContent = 'Try again';
-      } else {
-        startScanner();
-      }
-    }, 2000);
-  } else {
-    startScanner();
-  }
+// ── RESET ──────────────────────────────────────────
+function resetScanner() {
+  scanning = false;
+  if (scanTimer) clearTimeout(scanTimer);
+  document.getElementById('result-card').style.display  = 'none';
+  document.getElementById('rescan-btn').style.display   = 'none';
+  document.getElementById('saved-badge').style.display  = 'none';
+  document.getElementById('start-btn').textContent = 'Start camera';
+  document.getElementById('start-btn').onclick = startCamera;
+  document.getElementById('start-btn').style.display = 'block';
+  setStatus('Tap button to start camera', 'active');
 }
 
-document.addEventListener('DOMContentLoaded', waitForZXing);
+// ── MANUAL ENTRY ───────────────────────────────────
+function manualGo() {
+  var isbn = document.getElementById('isbn-input').value.replace(/[^0-9X]/gi,'').trim();
+  if (isbn.length < 9) { setStatus('Enter a valid ISBN (10 or 13 digits).', 'error'); return; }
+  scanning = false;
+  if (scanTimer) clearTimeout(scanTimer);
+  if (stream) stream.getTracks().forEach(function(t){ t.stop(); });
+  document.getElementById('result-isbn').textContent = isbn;
+  document.getElementById('result-book').textContent = '';
+  document.getElementById('result-meta').textContent = '';
+  document.getElementById('result-card').style.display = 'block';
+  document.getElementById('rescan-btn').style.display  = 'block';
+  saveToSheet(isbn);
+}
 </script>
 </body>
 </html>
