@@ -293,37 +293,38 @@ function saveToSheet(isbn) {
 }
 
 async function lookupBookClientSide(isbn) {
+  // Google Books first (broader coverage)
   try {
-    var url = 'https://openlibrary.org/api/books?bibkeys=ISBN:' + isbn + '&format=json&jscmd=data';
-    var resp = await fetch(url);
-    var json = await resp.json();
-    var book = json['ISBN:' + isbn];
-    if (book) {
-      var authors = (book.authors||[]).map(function(a){ return a.name; }).join(', ');
-      document.getElementById('result-book').textContent = book.title || '';
+    var gbResp = await fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:' + isbn);
+    var gbJson = await gbResp.json();
+    if (gbJson.items && gbJson.items[0]) {
+      var info = gbJson.items[0].volumeInfo || {};
+      document.getElementById('result-book').textContent = info.title || '';
       document.getElementById('result-meta').textContent =
-        [authors, book.publish_date, book.number_of_pages ? book.number_of_pages+' pages' : '']
+        [(info.authors||[]).join(', '),
+         (info.publishedDate||'').substring(0,4),
+         info.pageCount ? info.pageCount + ' pages' : '']
         .filter(Boolean).join(' \u00b7 ');
-    } else {
-      // Try Google Books
-      var gbUrl = 'https://www.googleapis.com/books/v1/volumes?q=isbn:' + isbn;
-      var gbResp = await fetch(gbUrl);
-      var gbJson = await gbResp.json();
-      if (gbJson.items && gbJson.items[0]) {
-        var info = gbJson.items[0].volumeInfo || {};
-        document.getElementById('result-book').textContent = info.title || '';
-        document.getElementById('result-meta').textContent =
-          [(info.authors||[]).join(', '), (info.publishedDate||'').substring(0,4)]
-          .filter(Boolean).join(' \u00b7 ');
-      }
+      return;
     }
-  } catch(e) {
-    // Book lookup failed — not critical
-    document.getElementById('result-meta').textContent = 'Book data lookup failed.';
-  }
+  } catch(e) {}
+  // Open Library fallback
+  try {
+    var olResp = await fetch('https://openlibrary.org/api/books?bibkeys=ISBN:' + isbn + '&format=json&jscmd=data');
+    var olJson = await olResp.json();
+    var book   = olJson['ISBN:' + isbn];
+    if (book && book.title) {
+      document.getElementById('result-book').textContent = book.title;
+      document.getElementById('result-meta').textContent =
+        [(book.authors||[]).map(function(a){return a.name;}).join(', '),
+         book.publish_date]
+        .filter(Boolean).join(' \u00b7 ');
+      return;
+    }
+  } catch(e) {}
+  document.getElementById('result-meta').textContent = 'Saved to sheet \u2014 no metadata found.';
 }
 
-// ── RESET ──────────────────────────────────────────
 function resetScanner() {
   scanning = false;
   if (scanTimer) clearTimeout(scanTimer);
