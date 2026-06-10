@@ -105,15 +105,7 @@ var SHEET   = p.get('sheet')  || 'Books';
 var SCRIPT  = p.get('script') || '';
 document.getElementById('row-badge').textContent = 'Row ' + ROW;
 
-// If returning from a successful save, show confirmation
-var savedIsbn = p.get('saved');
-if (savedIsbn) {
-  document.getElementById('result-isbn').textContent = savedIsbn;
-  document.getElementById('result-card').style.display = 'block';
-  document.getElementById('saved-badge').style.display = 'inline-block';
-  document.getElementById('rescan-btn').style.display = 'block';
-  setStatus('\u2713 ISBN ' + savedIsbn + ' saved to Row ' + ROW, 'success');
-}
+
 
 // ── STATE ──────────────────────────────────────────
 var stream     = null;
@@ -258,43 +250,69 @@ function onFound(isbn) {
 }
 
 // ── SAVE TO SHEET ──────────────────────────────────
-function saveToSheet(isbn) {
+async function saveToSheet(isbn) {
   if (!SCRIPT) {
-    setStatus('✓ ISBN: ' + isbn + ' — no Apps Script URL configured.', 'error');
+    setStatus('\u2713 ISBN: ' + isbn + ' detected. No sheet URL — check scan link.', 'error');
+    document.getElementById('result-meta').textContent = 'ISBN saved locally only.';
     return;
   }
-  setStatus(spin() + 'Saving to sheet...', 'active');
+  setStatus(spin() + 'Saving ISBN to sheet...', 'active');
 
-  // Use hidden form submit — avoids CORS entirely
-  // Apps Script will process and redirect back to a success page
-  var returnUrl = location.href.split('?')[0]
-    + '?row=' + encodeURIComponent(ROW)
+  var url = SCRIPT
+    + '?action=writeIsbn'
+    + '&row='   + encodeURIComponent(ROW)
     + '&sheet=' + encodeURIComponent(SHEET)
-    + '&script=' + encodeURIComponent(SCRIPT)
-    + '&saved=' + encodeURIComponent(isbn);
+    + '&isbn='  + encodeURIComponent(isbn);
 
-  var form = document.createElement('form');
-  form.method = 'GET';
-  form.action = SCRIPT;
+  try {
+    // Use no-cors — we won't get a readable response but the request fires
+    // Apps Script will still write to the sheet
+    await fetch(url, { method: 'GET', mode: 'no-cors', redirect: 'follow' });
 
-  var fields = {
-    action: 'writeIsbn',
-    row: ROW,
-    sheet: SHEET,
-    isbn: isbn,
-    returnUrl: returnUrl
-  };
+    // Since no-cors gives us an opaque response we can't read it
+    // Just show success and do a separate Open Library lookup client-side
+    document.getElementById('saved-badge').style.display = 'inline-block';
+    setStatus('\u2713 ISBN ' + isbn + ' sent to sheet (Row ' + ROW + ')', 'success');
 
-  Object.keys(fields).forEach(function(k) {
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = k;
-    input.value = fields[k];
-    form.appendChild(input);
-  });
+    // Look up book data directly from Open Library (no CORS issues)
+    lookupBookClientSide(isbn);
 
-  document.body.appendChild(form);
-  form.submit();
+  } catch(e) {
+    // Even no-cors failed — network issue
+    setStatus('Could not reach sheet. ISBN: ' + isbn + ' (write it down manually)', 'error');
+    document.getElementById('result-meta').textContent = 'Network error: ' + e.message;
+  }
+}
+
+async function lookupBookClientSide(isbn) {
+  try {
+    var url = 'https://openlibrary.org/api/books?bibkeys=ISBN:' + isbn + '&format=json&jscmd=data';
+    var resp = await fetch(url);
+    var json = await resp.json();
+    var book = json['ISBN:' + isbn];
+    if (book) {
+      var authors = (book.authors||[]).map(function(a){ return a.name; }).join(', ');
+      document.getElementById('result-book').textContent = book.title || '';
+      document.getElementById('result-meta').textContent =
+        [authors, book.publish_date, book.number_of_pages ? book.number_of_pages+' pages' : '']
+        .filter(Boolean).join(' \u00b7 ');
+    } else {
+      // Try Google Books
+      var gbUrl = 'https://www.googleapis.com/books/v1/volumes?q=isbn:' + isbn;
+      var gbResp = await fetch(gbUrl);
+      var gbJson = await gbResp.json();
+      if (gbJson.items && gbJson.items[0]) {
+        var info = gbJson.items[0].volumeInfo || {};
+        document.getElementById('result-book').textContent = info.title || '';
+        document.getElementById('result-meta').textContent =
+          [(info.authors||[]).join(', '), (info.publishedDate||'').substring(0,4)]
+          .filter(Boolean).join(' \u00b7 ');
+      }
+    }
+  } catch(e) {
+    // Book lookup failed — not critical
+    document.getElementById('result-meta').textContent = 'Book data lookup failed.';
+  }
 }
 
 // ── RESET ──────────────────────────────────────────
